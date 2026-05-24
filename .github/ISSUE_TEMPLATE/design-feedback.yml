@@ -1,0 +1,54 @@
+name: Design feedback
+description: Push back on a load-bearing design choice
+labels: ["design-feedback"]
+body:
+  - type: dropdown
+    id: which
+    attributes:
+      label: Which design claim are you pushing back on?
+      options:
+        - "1. Structural verifier isolation beats prompt-level"
+        - "2. Force verdicts; preserve dissent loudly"
+        - "3. Confidence calibration with hard cap"
+        - "4. Chairman dual-hat acceptable (until Hermes ships)"
+        - "5. AceMAD's discrete sample-space scaling"
+        - Other (specify below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: claim
+    attributes:
+      label: What's the design claim you disagree with (in your own words)?
+      placeholder: |
+        e.g. "The MEDIUM cap can be imposed unilaterally by the Chairman
+        without explicit dissent from any voter — this is too much
+        gatekeeping power."
+    validations:
+      required: true
+
+  - type: textarea
+    id: counter
+    attributes:
+      label: What would you do instead?
+      placeholder: |
+        e.g. "Require at least one voter to ALSO express framing-level
+        reservation before the cap engages, OR raise it to LOW with the
+        Chairman's reservation alone."
+    validations:
+      required: true
+
+  - type: textarea
+    id: failure-mode
+    attributes:
+      label: What failure mode of the current design are you targeting?
+      description: Concrete is better than abstract.
+    validations:
+      required: false
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Prior art or relevant papers (optional)
+    validations:
+      required: false

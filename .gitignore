@@ -1,0 +1,46 @@
+# Typed LLM Council — defence-in-depth ignores.
+# Secrets live in macOS Keychain only (see docs/operator_setup.md).
+# Even so, refuse to commit anything that smells like a secret.
+
+# Secrets / credentials
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+secrets
+secrets/
+secrets.*
+config.local.toml
+config.local.*
+*.local.toml
+*.local.yaml
+*.local.json
+
+# Python build / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Test cache
+.pytest_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp

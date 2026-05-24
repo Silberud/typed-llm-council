@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# H5R Council v2.3 entrypoint shim.
+# Once the package is `pip install -e .`'d, the console-script `council` is
+# generated automatically. This shim is here for operators who want to invoke
+# without activating the venv.
+exec python3 -m orchestrator.supervisor "$@"

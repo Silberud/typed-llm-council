@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# council-eval — bootstrap labelled pass/fail telemetry sessions.
+# Not yet implemented in this build. Phase H of the v2.3 plan delivers
+# `council-eval --bootstrap` against the >=10 labelled-session corpus.
+# See ~/.h5r-council/docs/council_spec_v2.2.md §11 Phase H.
+echo "council-eval is not yet implemented (Phase H of the v2.3 plan)." >&2
+exit 2

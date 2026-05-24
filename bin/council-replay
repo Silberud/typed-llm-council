@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# council-replay — re-run a saved session against the current orchestrator
+# (regression-tests that protocol changes haven't broken historical sessions).
+# Not yet implemented in this build. Phase I of the v2.3 plan delivers replay.
+# See ~/.h5r-council/docs/council_spec_v2.2.md §13 (Migration) and §11 Phase I.
+echo "council-replay is not yet implemented (Phase I of the v2.3 plan)." >&2
+exit 2

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "h5r-council"
+version = "2.3.0"
+description = "H5R LLM Council v2.3 — decoupled multi-model deliberation orchestrator"
+authors = [{ name = "Igor Silberud", email = "igor.silberud@gmail.com" }]
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.6",                              # schemas, frozen VerifierInput
+  "tomli>=2.0; python_version<'3.11'",          # tomllib is stdlib on >= 3.11
+  "python-ulid>=2.2",                           # staged for Phase D session-id generation
+  "httpx>=0.27",                                # Qwen Ollama + Kimi Moonshot calls
+  "rich>=13.7",                                 # staged for Phase H telemetry dashboards
+]
+
+[project.optional-dependencies]
+# Phase A/B/E test stack
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "hypothesis>=6.100",
+  "ruff>=0.4",
+]
+# Phase G additions (FOCUS metric + asyncio perf) — install only when Phase G is built.
+focus = ["sentence-transformers>=3.0", "uvloop>=0.19"]
+
+[project.scripts]
+council        = "orchestrator.supervisor:main"
+council-eval   = "orchestrator.supervisor:eval_main"
+council-replay = "orchestrator.supervisor:replay_main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["orchestrator*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["orchestrator/tests"]
+# Live tests (real Claude + Kimi calls) live under tests/_live/ and are skipped
+# by default. Run them explicitly: pytest orchestrator/tests/_live -v
+norecursedirs = ["_live", "fixtures", ".*", "*.egg", "build", "dist", "node_modules"]

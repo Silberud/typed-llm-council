@@ -1,0 +1,53 @@
+# H5R Council v2.3 — operator configuration.
+# Loaded by orchestrator/supervisor.py at start. All values overridable per session.
+
+[session]
+default_eta            = 1.0            # AceMAD weight-update temperature (§7.5)
+default_stage_timeout  = 90             # seconds, per-stage outer cap
+escalation_cap         = 1              # spec §6 Stage 6 hard cap
+
+[acemad]
+entropy_low_threshold_fraction = 0.6    # h < 0.6 * max_entropy → flag (§7.5)
+entropy_spike_threshold        = 0.7    # any q_i outcome > 0.7 → flag
+weight_overflow_cap            = 1e10   # numeric safety in aggregate()
+
+[focus]
+drift_trigger = -0.3                    # FOCUS_r < -0.3 → Stage 6 escalate
+
+[adapters.claude]
+model           = "claude-opus-4-7"     # spec said "opus-4-7"; correct full name
+max_budget_usd  = 2.0                   # per-call cap, --max-budget-usd
+
+[adapters.gemini]
+model = "gemini-3.1-pro-preview"        # spec said "gemini-3.1-pro"; needs -preview until GA
+
+[adapters.gpt]
+model            = "gpt-5.5"            # subcommand is `codex exec`, not `codex chat` (spec slip)
+reasoning_effort = "high"
+
+[adapters.qwen]
+model        = "qwen3.6:35b-a3b-coding-nvfp4"
+endpoint     = "http://localhost:11434"
+queue_a_name = "contributor"
+queue_b_name = "drift_judge"
+
+[adapters.grok]
+# Stubbed — no OAuth CLI path for X Premium+ tier. Adapter always DROPS.
+# See KNOWN_GAPS.md (will host EX-002 once written).
+enabled = false
+
+[adapters.kimi]
+# EX-001: API-key auth via macOS Keychain. Spec wanted Moonshot OAuth CLI.
+# Corollary: with the API-key route we hit the Moonshot HTTP API directly
+# rather than going through `kimi` CLI (which requires OAuth login).
+model               = "kimi-k2.6"
+endpoint            = "https://api.moonshot.ai/v1/chat/completions"
+keychain_service    = "h5r-council-kimi-verifier"
+keychain_account    = "moonshot-api-key"
+
+[anonymizer]
+host = "127.0.0.1"
+port = 7711
+
+[telemetry]
+db_path = "~/.h5r-council/telemetry/sessions.db"
