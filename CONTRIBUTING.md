@@ -2,10 +2,20 @@
 
 Thanks for the interest. A few conventions:
 
+## Start by reading these three files
+
+If you're new to the codebase, the load-bearing pieces are:
+
+1. **`orchestrator/schemas/verifier_input.py`** — the frozen Pydantic schema that defines what the verifier seat is structurally allowed to receive.
+2. **`orchestrator/adapters/base.py`** — the `ContributingAdapter` vs `VerifierAdapter` split that makes Kimi structurally lack an `ask()` method.
+3. **`orchestrator/stages/stage3_verification.py`** + **`orchestrator/services/leak_filter.py`** — the protocol layer that takes the decomposer's output, runs the content-channel leak filter, and only then calls Kimi.
+
+Then look at **`orchestrator/tests/test_cove_isolation.py`** + **`orchestrator/tests/test_leak_filter.py`** to see what the design guarantees the project is committed to.
+
 ## Where to start
 
 - **Design questions** — open a [Discussion](../../discussions). I'm specifically looking for pushback on the five items in the README's *Looking for feedback on* section.
-- **Bug reports** — open an Issue with reproducer steps. Include `python3 -m orchestrator.supervisor --status` output.
+- **Bug reports** — open an Issue with reproducer steps. Include `python -m orchestrator.supervisor --status` output.
 - **Code contributions** — open a PR. Squash-merge by default; no force-pushes to `main`.
 
 ## Tests
@@ -44,7 +54,7 @@ in the PR description.
 Phases C, D, F, G, H are in the roadmap. If you want to claim one:
 
 1. Open a Discussion first describing your approach.
-2. Stick to the spec at `docs/council_spec_v2.2.md` — deviations are fine
+2. Stick to the spec at `docs/internal_spec_v2.2.md` — deviations are fine
    if justified, but document them in `docs/operator_setup.md` (or a new
    gaps file you create) and reference them in the PR.
 3. Each phase has acceptance criteria in spec §11 — your PR should explain

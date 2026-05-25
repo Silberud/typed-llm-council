@@ -52,7 +52,8 @@ class GeminiAdapter(ContributingAdapter):
             obj = json.loads(stdout)
             for key in ("response", "text", "result", "output", "content"):
                 if key in obj and isinstance(obj[key], str):
-                    text = obj[key]; break
+                    text = obj[key]
+                    break
             model_used = obj.get("model") or obj.get("model_used")
         except json.JSONDecodeError:
             text = stdout

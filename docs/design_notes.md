@@ -2,8 +2,8 @@
 
 ## Citation status
 
-The implementation specification at `docs/council_spec_v2.2.md` references
-several recent papers in §16:
+The implementation specification at `docs/internal_spec_v2.2.md` references
+several papers in §16:
 
 1. Self-MoA-Seq — Li, Lin, Xia, Jin (arXiv 2502.00674)
 2. D3 Advocate-Juror — Bandi, Bandi, Harrasse (arXiv 2410.04663)
@@ -15,11 +15,13 @@ several recent papers in §16:
 8. ChatEval — Chan et al. (arXiv 2308.07201)
 9. Judging LLM-as-a-Judge — Zheng et al. (arXiv 2306.05685)
 
-These references are reproduced from the spec as supplied by the H5R
-operator. Refs 3, 6, 7, 8, 9 are well-known prior work in the LLM-judging
-literature. Refs 1, 2, 4, 5 carry forward-looking dates (Feb 2025 onward);
-if a reference is unverifiable for you, treat the design idea as the
-authoritative source rather than the citation.
+Refs 3, 6, 7, 8, 9 are well-established prior work in the LLM-judging
+literature. Refs 1, 2, 4, 5 are more recent or forward-looking; their
+citation status is reproduced from the implementation spec without
+independent verification by this repo. The design ideas in the spec
+should be treated as the authoritative description even if a specific
+arxiv ID is uncheckable; if you can verify and want to update a citation
+with a stable URL, that PR is welcome.
 
 ## Why structural isolation rather than prompt-level
 
@@ -56,10 +58,12 @@ without a verdict is treated as a failed turn.
 The synthesiser is the most powerful seat in any multi-agent deliberation
 — it picks what to keep. If the Chairman's own opinion bleeds into the
 "council consensus" section, the system has a single-point bias that's
-invisible to downstream readers. The protocol's Stage 3 has four labelled
-subsections; `Chairman's independent judgement` is its own block, capped
-at ~1 paragraph, and the synthesis is forbidden from referencing it as
-"council consensus."
+invisible to downstream readers. **The protocol's Stage 5 synthesis** has
+four labelled subsections; `Chairman's independent judgement` is its own
+block, capped at ~1 paragraph, and the synthesis is forbidden from
+referencing it as "council consensus." (Stage 3 in the v2.3 spec is CoVe
+verification — *not* synthesis. An earlier v1 protocol numbered synthesis
+as Stage 3; the v2.3 7-stage protocol renumbers.)
 
 The interim Stage 1.5 Chairman Skeptic pass is a related concession: as
 long as the Skeptic seat is stubbed (`docs/operator_setup.md` → CG-001),

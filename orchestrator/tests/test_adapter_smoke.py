@@ -86,3 +86,32 @@ def test_auth_check_returns_bool_not_raises_when_broken():
         a = cls()
         result = asyncio.run(a.auth_check())
         assert isinstance(result, bool), f"{cls.__name__}.auth_check() returned {type(result).__name__}"
+
+
+def test_kimi_ask_verifier_rejects_non_VerifierInput_at_runtime():
+    """Belt-and-suspenders runtime check (Hermes finding #9): even though the
+    annotation says VerifierInput, a duck-typed object with the right
+    attributes would otherwise sneak through. ask_verifier must raise
+    TypeError on anything that isn't an actual VerifierInput instance."""
+    class FakeInput:
+        operator_prompt = "x"
+        verification_question = "y"
+    k = KimiAdapter()
+    with pytest.raises(TypeError, match="VerifierInput"):
+        asyncio.run(k.ask_verifier(FakeInput()))
+    with pytest.raises(TypeError, match="VerifierInput"):
+        asyncio.run(k.ask_verifier({"operator_prompt": "x", "verification_question": "y"}))
+
+
+def test_kimi_endpoint_allowlist():
+    """Hermes finding #12: arbitrary endpoint URL would exfiltrate Bearer token."""
+    from orchestrator.adapters.kimi import _validate_endpoint
+    # Allowed
+    _validate_endpoint("https://api.moonshot.ai/v1/chat/completions")
+    _validate_endpoint("https://api.moonshot.cn/v1/chat/completions")
+    # HTTP rejected
+    with pytest.raises(ValueError, match="HTTPS"):
+        _validate_endpoint("http://api.moonshot.ai/v1/chat/completions")
+    # Non-allowlisted host rejected
+    with pytest.raises(ValueError, match="allowlist"):
+        _validate_endpoint("https://api.attacker.com/v1/chat/completions")

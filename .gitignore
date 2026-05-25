@@ -32,9 +32,10 @@ dist/
 venv/
 env/
 
-# Test cache
+# Test / lint cache
 .pytest_cache/
 .hypothesis/
+.ruff_cache/
 .coverage
 .coverage.*
 htmlcov/

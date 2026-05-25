@@ -15,7 +15,7 @@ from orchestrator.adapters.base import ContributingAdapter
 from orchestrator.adapters._common import extract_verdict, run_cli
 from orchestrator.schemas.stage_output import DroppedResult, MemberResult
 
-log = logging.getLogger("h5r-council.adapters.gpt")
+log = logging.getLogger("llm-council.adapters.gpt")
 DEFAULT_MODEL = "gpt-5.5"
 
 
@@ -99,5 +99,7 @@ class GPTAdapter(ContributingAdapter):
                 duration_s=elapsed,
             )
         finally:
-            try: tmp.unlink()
-            except FileNotFoundError: pass
+            try:
+                tmp.unlink()
+            except FileNotFoundError:
+                pass

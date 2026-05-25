@@ -28,7 +28,6 @@ from __future__ import annotations
 import json
 import inspect
 from dataclasses import dataclass, field
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -40,7 +39,6 @@ from pydantic import ValidationError
 from orchestrator.adapters.kimi import KimiAdapter
 from orchestrator.schemas.verifier_input import VerifierInput
 from orchestrator.stages.stage3_verification import stage3_cove_verify
-from orchestrator.adapters.base import MemberAdapter
 
 
 # ============================================================================

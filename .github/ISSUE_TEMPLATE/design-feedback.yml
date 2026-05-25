@@ -5,14 +5,14 @@ body:
   - type: dropdown
     id: which
     attributes:
-      label: Which design claim are you pushing back on?
+      label: Which of the README "Looking for feedback on" questions are you pushing back on?
       options:
-        - "1. Structural verifier isolation beats prompt-level"
-        - "2. Force verdicts; preserve dissent loudly"
-        - "3. Confidence calibration with hard cap"
-        - "4. Chairman dual-hat acceptable (until Hermes ships)"
+        - "1. Chairman dual-hat (synthesiser + Skeptic until that seat ships)"
+        - "2. Procedural vs mechanical anonymisation"
+        - "3. The MEDIUM cap (Chairman premise-validation power)"
+        - "4. Single-model verifier risk (Kimi K2.6 systematic blind spot)"
         - "5. AceMAD's discrete sample-space scaling"
-        - Other (specify below)
+        - Other design claim (specify below)
     validations:
       required: true
 

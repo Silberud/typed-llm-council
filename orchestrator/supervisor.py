@@ -28,6 +28,9 @@ CONFIG_PATH = Path(os.environ.get("LLM_COUNCIL_CONFIG", str(_DEFAULT_CONFIG)))
 log = logging.getLogger("llm-council.supervisor")
 
 
+# Update the `_show_status` note to point at the public-doc location.
+
+
 def load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
     """Load config.toml with graceful fallback.
 
@@ -78,7 +81,12 @@ def build_adapters(config: dict[str, Any]) -> dict[str, Any]:
         "gpt":      GPTAdapter(**{kk: p[kk] for kk in ("model", "reasoning_effort") if kk in p}),
         "qwen":     QwenAdapter(**{kk: q[kk] for kk in ("model", "endpoint") if kk in q}, queue="A"),
         "grok":     GrokAdapter(),
-        "kimi":     KimiAdapter(**{kk: k[kk] for kk in ("model", "endpoint") if kk in k}),
+        # Wire the keychain_service/keychain_account fields from config through
+        # to KimiAdapter so config.toml edits actually take effect (previously
+        # silently ignored — Hermes review finding).
+        "kimi":     KimiAdapter(**{kk: k[kk] for kk in
+                                   ("model", "endpoint", "keychain_service", "keychain_account")
+                                   if kk in k}),
     }
 
 

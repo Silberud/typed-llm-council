@@ -1,43 +1,55 @@
 # Typed LLM Council (v2.3.0)
 
-> A multi-model deliberation orchestrator with **type-level verifier isolation**, **anti-sycophancy forced verdicts**, and **per-session audit transcripts**. Originally developed at H5 Resources.
+> A multi-model deliberation orchestrator with **three-layer verifier isolation** (schema + adapter + content), **anti-sycophancy forced verdicts**, and **structured per-stage outputs**. Developed by Igor Silberud (H5 Resources).
 
 ![CI](https://github.com/Silberud/typed-llm-council/actions/workflows/ci.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)
 
+> Not affiliated with or endorsed by Anthropic, Google, OpenAI, Alibaba/Qwen, xAI, or Moonshot. All model providers are referenced by their public CLI/API names. No telemetry is sent anywhere by this code — everything is local.
+
 ---
 
 ## TL;DR
 
-A decoupled Python asyncio orchestrator that pits five model identities against each other through a 7-stage deliberation protocol (Self-MoA-Seq drafting → D3 advocate/juror critique → CoVe factored verification → AceMAD peer-prediction voting → PoLL rotating-chair synthesis → FOCUS drift escalation), with one critical structural invariant: the verifier (Kimi K2.6) is shaped at the type system so it **cannot** receive the draft, framing, advocate defence, juror critiques, or any other council content. Only the operator's original prompt and a single factored verification question cross the boundary.
+A decoupled Python asyncio orchestrator that pits five model identities against each other through a 7-stage deliberation protocol (Self-MoA-Seq drafting → D3 advocate/juror critique → CoVe factored verification → AceMAD peer-prediction voting → PoLL rotating-chair synthesis → FOCUS drift escalation). The architecturally distinct claim of this release is **structural adapter-level isolation between voting and verifying seats**, enforced at three independent layers:
 
-That invariant is enforced three ways — Pydantic schema (`frozen=True, extra="forbid"`), adapter inheritance split (Kimi inherits `VerifierAdapter`, not `ContributingAdapter`, so it has no `ask()` method at all), and a CI test (`tests/test_cove_isolation.py`) with 16 cases including 50-fixture Hypothesis fuzzing.
+1. **Schema layer** — `VerifierInput` is `frozen=True, extra="forbid"`. Any field other than `operator_prompt` + `verification_question` is a `ValidationError`.
+2. **Adapter layer** — `KimiAdapter` inherits `VerifierAdapter`, not `ContributingAdapter`. It has no `ask()` method at all — calling `kimi.ask("…")` raises `AttributeError`, not a slightly weird answer.
+3. **Content layer** — between `decompose_draft()` and `kimi.ask_verifier()`, a leak filter (`services/leak_filter.py`) checks every verification question for n-gram windows from the draft/framing and for council-meta role markers ("advocate", "juror", "council", "draft says", …) not present in the operator's original prompt. **Fails closed** if a leaky decomposer would smuggle drafter prose into the allowed `verification_question` field.
+
+Layers 1 and 2 are structural (Phase E.0). Layer 3 was added in the 2026-05-25 hardening pass (Phase E.1) after an adversarial review caught that schema+adapter alone don't constrain the *content* of the allowed field. **All three layers are needed; none is sufficient alone.** This is honestly stronger than the original CoVe paper's property (which doesn't isolate the verifier from "draft-derived" content at all — questions in CoVe normally do contain claim restatements).
+
+Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz on layers 1+2) and `tests/test_leak_filter.py` (12 cases including a regression test that patches `decompose_draft` to return a leaky question and asserts Stage 3 aborts before Kimi sees it).
 
 ---
 
 ## Status — what's actually in this release
 
-**v2.3.0 ships Phase A + Phase B + Phase E of a 9-phase plan.** Be explicit about that.
+**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1) of a 9-phase plan.** Be explicit about that.
 
 | Phase | What | Status |
 |---|---|---|
-| A | Skeleton, on-disk layout, supervisor, config | ✅ |
-| B | All 6 member adapters (Claude / Gemini / GPT / Qwen / Grok-stub / Kimi-verifier) with auth-check + model-pin | ✅ |
+| A | Skeleton, on-disk layout, supervisor, config loader | ✅ |
+| B | Six adapters: five contributing interfaces (Claude / Gemini / GPT / Qwen / Grok-stub) + one verifier (Kimi). Grok is a documented stub; Kimi is non-voting | ✅ |
 | C | Anonymizer service (TCP 7711, RAM-only label map) | ⏳ |
 | D | Stages 0, 1, 2, 5 (framing, Self-MoA-Seq, D3 advocate-juror, PoLL synth) | ⏳ |
-| E | Stage 3 CoVe verifier + `test_cove_isolation.py` CI gate | ✅ |
+| **E.0** | Stage 3 structural isolation (schema + adapter layers) | ✅ |
+| **E.1** | Stage 3 content-layer leak filter + regression tests | ✅ |
+| **E.2** | Real CoVe comparator (currently a confidence-threshold placeholder) | ⏳ |
 | F | Stage 4 AceMAD aggregation + entropy flag | ⏳ |
 | G | Stage 6 FOCUS escalation + DRIFTJudge (Qwen Queue B) | ⏳ |
-| H | Telemetry (SQLite WAL) + bootstrap | ⏳ |
+| H | Persistent transcripts + SQLite WAL telemetry + bootstrap | ⏳ |
 | I | v1 migration | n/a |
 
-**`council <prompt>` will deliberately exit non-zero** until D/F/G land. What works end-to-end today is **Stage 3 verification**, which has been live-smoked against real Claude + real Kimi (8 decomposed questions → 8 verifier answers → comparator triggers in 128s wallclock).
+**`council <prompt>` will deliberately exit non-zero** until D/F/G land. What works end-to-end today is **Stage 3 verification with three-layer isolation**, live-smoked against real Claude + real Kimi (7–8 decomposed questions → all pass the leak filter → 7–8 verifier answers in ~2–4 min wallclock).
 
 ```
-24/24 structural tests pass
+37/37 structural tests pass (24 cove-isolation + 12 leak-filter + 1 smoke)
  1/1 live Stage 3 integration smoke passes
 ```
+
+**Deferred-phase timeline:** there isn't one. This is a personal project; Phase D is the next milestone the maintainer plans to land, with no firm date — it depends on bandwidth. Contributors welcome (see `CONTRIBUTING.md`).
 
 ---
 
@@ -45,7 +57,7 @@ That invariant is enforced three ways — Pydantic schema (`frozen=True, extra="
 
 Three load-bearing claims this design is making. I'd love pushback:
 
-1. **Structural verifier isolation beats prompt-level isolation.** Most CoVe / verifier patterns rely on "we asked the verifier not to look at the draft." This design makes leaking the draft to the verifier a **TypeError**, not a prompt-engineering hope. The `KimiAdapter` literally has no `ask()` method — there is no API surface that would accept a free-form prompt.
+1. **Three-layer verifier isolation beats prompt-level isolation alone.** Most CoVe / verifier patterns rely on "we asked the verifier not to look at the draft" — a prompt-engineering promise. This design adds two structural enforcements (schema-level extra-field rejection; adapter-level absence of an `ask()` method on Kimi) plus a content-level n-gram + role-marker leak filter between decomposer and verifier. The claim isn't that any one layer is novel; it's that combining all three makes accidental leakage by future contributors *fail loudly* instead of silently degrading the verifier's independence.
 
 2. **Force verdicts; preserve dissent loudly.** Every voice ends with `APPROVE` / `REJECT` / `MODIFY`. The Chairman's synthesis has four labelled subsections, including a *quarantined* `Chairman's independent judgement` that cannot pose as council consensus, plus a `Dissent log` that the synthesis is forbidden from smoothing over.
 
@@ -77,15 +89,17 @@ Three load-bearing claims this design is making. I'd love pushback:
                                                                          │
                             ┌────────────────────────┐                   │
                             │  K2.6 VERIFIER (CoVe)  │   <-- Stage 3     │
-                            │  non-voting,           │       isolated    │
-                            │  receives ONLY         │       (type +     │
-                            │  VerifierInput         │        schema +   │
-                            └────────────────────────┘        CI gate)
+                            │  non-voting,           │       three-layer │
+                            │  receives ONLY         │       isolation:  │
+                            │  VerifierInput AFTER   │       schema +    │
+                            │  leak filter           │       adapter +   │
+                            └────────────────────────┘       content
                                        │
                             ┌──────────▼──────────┐
-                            │ Session transcript  │
-                            │ (per-stage JSON,    │
-                            │  audit-grade)       │
+                            │ Per-stage outputs   │
+                            │ (structured;        │
+                            │  persistence is     │
+                            │  Phase H)           │
                             └─────────────────────┘
 ```
 
@@ -93,18 +107,22 @@ Three load-bearing claims this design is making. I'd love pushback:
 
 ## Quickstart
 
+Requires **Python 3.11+**. On macOS, bare `python3` may still resolve to 3.9 even on recent systems — use `python3.11` or `python3.12` (or `uv venv --python 3.12`) explicitly:
+
 ```bash
 git clone https://github.com/Silberud/typed-llm-council
 cd typed-llm-council
 
-python3 -m venv .venv && . .venv/bin/activate
+# Use python3.11 or python3.12 explicitly — NOT bare python3 (may be 3.9 on macOS)
+python3.12 -m venv .venv && . .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel  # older pip can fail editable installs
 pip install -e ".[dev]"
 
 # Auth status across all 6 seats (no live calls)
-python3 -m orchestrator.supervisor --status
+python -m orchestrator.supervisor --status
 
-# Live ping each seat (burns trivial quota; needs CLIs installed)
-python3 -m orchestrator.supervisor --status --live
+# Live ping each seat (burns trivial quota; needs the model CLIs installed)
+python -m orchestrator.supervisor --status --live
 
 # Structural tests (24 cases, no live calls, runs in ~0.3s)
 pytest orchestrator/tests/
@@ -123,15 +141,28 @@ I'd genuinely like opinions on these — open an [Issue](../../issues) tagged `d
 
 1. **Chairman dual-hat.** Claude is the synthesiser, the framing-checker, and (until the Skeptic seat ships) wears the Skeptic hat in a clearly-flagged Stage 1.5 pass. Is the quarantining of the Chairman view structurally sufficient, or does the dual hat let too much bias bleed into synthesis?
 
-2. **Procedural anonymisation.** Stage 2 anonymisation is persona-prompt-enforced ("do not speculate on authorship; do not reference 'the other AI'"). Should it move to a mechanical guarantee where the Chairman's wrapper never even *passes* authorship metadata to member subprocesses?
+2. **Procedural vs mechanical anonymisation.** Stage 2 anonymisation is persona-prompt-enforced ("do not speculate on authorship; do not reference 'the other AI'"). Should it move to a mechanical guarantee where the Chairman's wrapper never even *passes* authorship metadata to member subprocesses?
 
 3. **The MEDIUM cap.** The Chairman can unilaterally cap a verdict at MEDIUM by signalling reservation about framing. Appropriate Chairman power, or should it require explicit second confirmation (e.g., dissent from at least one voice)?
 
-4. **Forcing one model to be the verifier.** Kimi K2.6 sits in the verifier seat; if K2.6 has a systematic blind spot, the entire CoVe stage inherits it. Is verifier-rotation worth the complexity, or does single-model verification with strong factored decomposition cover enough?
+4. **Single-model verifier risk.** Kimi K2.6 sits in the verifier seat; if K2.6 has a systematic blind spot, the entire CoVe stage inherits it. Is verifier-rotation worth the complexity, or does single-model verification with strong factored decomposition cover enough?
 
 5. **AceMAD's discrete sample-space scaling.** The original AceMAD paper benchmarks 4–10 verdict outcomes. This design uses a 12-outcome peer-prediction sample space (4 other voters × 3 verdicts; 9 with Grok stubbed). The submartingale-drift property is theoretically robust, but empirically untested at this dimension — what's a sensible empirical bar to validate it on?
 
 ---
+
+## Model compatibility matrix
+
+| Seat | Configured model id | Test status |
+|---|---|---|
+| Claude (Drafter/Chair) | `claude-opus-4-7` | live-tested 2026-05-24 (Codex CLI shipping; gpt-5.5 in Codex Pro) |
+| Gemini (Researcher) | `gemini-3.1-pro-preview` | code path live-tested; OAuth account was quota-throttled (TRANS-001) — adapter wiring is correct, full live confirmation pending |
+| GPT (Architect) | `gpt-5.5` | live-tested 2026-05-24 via Codex CLI 0.132.0 (model-pin degraded — see CG-002) |
+| Qwen (Analyst) | `qwen3.6:35b-a3b-coding-nvfp4` | live-tested 2026-05-24 (local Ollama, M3 Max) |
+| Grok (Skeptic) | stubbed | n/a — see CG-001 |
+| Kimi (Verifier) | `kimi-k2.6` | live-tested 2026-05-24 via `api.moonshot.ai` (API-key path per EX-001) |
+
+Model ids reflect what was current and tested at the date shown. If you're reading this much later, expect drift; pin via `config.toml` or env vars (`LLM_COUNCIL_CONFIG`).
 
 ## Documented deviations from the spec (caught during the build)
 
@@ -160,15 +191,17 @@ Next phases in priority order:
 
 ---
 
-## Citations (status: as-published in the spec)
+## Citations
 
-The design draws on `Self-MoA-Seq`, `D3 advocate-juror`, `CoVe`, `AceMAD`, `FOCUS`, `PoLL` — full reference list in [`docs/council_spec_v2.2.md`](docs/council_spec_v2.2.md) §16. See [`docs/design_notes.md`](docs/design_notes.md) for a note on citation status.
+The design draws on `Self-MoA-Seq`, `D3 advocate-juror`, `CoVe`, `AceMAD`, `FOCUS`, `PoLL` — full reference list in [`docs/internal_spec_v2.2.md`](docs/internal_spec_v2.2.md) §16. Refs to long-established prior work (CoVe, PoLL, Multi-agent Debate, ChatEval, LLM-as-Judge) are well-known; refs to more recent or forward-looking work carry the spec's own provenance — see [`docs/design_notes.md`](docs/design_notes.md) for the citation note.
 
 ---
 
 ## Acknowledgements
 
-Originally developed at **H5 Resources**, where the v1 council (Claude + Gemini + Qwen + Codex) was used internally. The v2.3 rewrite (this repo) was scaffolded with **Claude Code** (Opus 4.7) over a single planning + build session, including the live integration smoke against real Claude and real Kimi. The `test_cove_isolation.py` CI gate is the original work of the H5R operator and is the load-bearing safety net for the verifier-isolation design.
+Developed by **Igor Silberud** (H5 Resources is the maintainer's own operating entity; no third-party employer rights are implicated). The v1 council that preceded this rewrite (Claude + Gemini + Qwen + Codex) was used internally at H5 Resources.
+
+AI development tools, including **Claude Code (Opus 4.7)**, were used during implementation of the v2.3 rewrite; all code is reviewed and licensed by the maintainer, and the design hypothesis is the maintainer's own. No provider endorsement is implied. The `test_cove_isolation.py` CI gate is original work by the maintainer and is the load-bearing safety net for layers 1 and 2 of the verifier-isolation design; the leak filter in `services/leak_filter.py` and the regression tests in `test_leak_filter.py` were added in the 2026-05-25 hardening pass after adversarial review caught that schema+adapter alone don't constrain the content of the allowed field.
 
 ---
 

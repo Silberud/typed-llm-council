@@ -4,7 +4,7 @@ import asyncio
 import re
 import time
 from typing import Sequence
-from orchestrator.schemas.stage_output import DroppedResult, MemberResult, Verdict
+from orchestrator.schemas.stage_output import DroppedResult, Verdict
 
 _VERDICT_RE = re.compile(r"\b(APPROVE|REJECT|MODIFY)\b")
 

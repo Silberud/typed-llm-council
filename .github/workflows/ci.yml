@@ -27,8 +27,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Ruff lint (surface-only — never blocks merge)
-        run: ruff check . || true
+      - name: Ruff lint (blocks merge — repo positions itself as discipline-focused)
+        run: ruff check .
 
-      - name: pytest (24 structural tests; _live/ excluded by config)
+      - name: pytest (structural tests only; _live/ excluded by config)
         run: pytest orchestrator/tests/ -v

@@ -1,32 +1,46 @@
 # Seed Discussion post (first-person, to be posted after repo creation)
 
-**Title:** I built a typed-isolation LLM Council — looking for design feedback
+**Title:** Typed-isolation LLM Council: looking for design feedback on verifier isolation
 
 **Category:** Show and tell (or "Design feedback" if a custom category gets created)
 
 **Body:**
 
 I just open-sourced **Typed LLM Council** — a multi-model deliberation
-orchestrator I've been using internally at H5 Resources. Rewrote it this
-month as a decoupled Python asyncio orchestrator with one specific design
-choice I'd like pushback on.
+orchestrator I've been using internally at H5 Resources. Reworked into a
+decoupled Python asyncio orchestrator with one specific design choice
+I'd like pushback on.
 
-**The structural claim:** instead of asking the CoVe verifier "please do
-not look at the draft" in its persona prompt, the verifier (Kimi K2.6)
-sits behind a `VerifierAdapter` base class that has no `ask(prompt)`
-method at all. Its only entry point is `ask_verifier(input: VerifierInput)`,
-where `VerifierInput` is a frozen Pydantic model with `extra="forbid"`.
-A future contributor who accidentally tries to pass the draft to the
-verifier gets a `ValidationError` at construction time, not a slightly
-weird answer. CI gate is `tests/test_cove_isolation.py` — 16 cases
-including 50-fixture Hypothesis fuzzing.
+**The structural claim, in three layers:** instead of asking the CoVe
+verifier "please do not look at the draft" in its persona prompt:
 
-The release ships **Phase A + Phase B + Phase E only** — full disclosure.
-That gets you the orchestrator skeleton, all six adapters (Claude /
-Gemini / GPT / Qwen / Grok-stub / Kimi-verifier), and the Stage 3 CoVe
-verifier with the locked CI safety net. Stages 0/1/2/4/5/6 are still
-sketched as a 7-stage protocol in `docs/council_spec_v2.2.md` but not
-implemented.
+- **Layer 1 (schema):** `VerifierInput` is a frozen Pydantic model with
+  `extra="forbid"`. Any field other than `operator_prompt` +
+  `verification_question` is a `ValidationError` at construction.
+- **Layer 2 (adapter):** `KimiAdapter` inherits `VerifierAdapter`, not
+  `ContributingAdapter`. It has no `ask(prompt)` method at all — calling
+  `kimi.ask("…")` raises `AttributeError`, not a slightly weird answer.
+- **Layer 3 (content):** between the decomposer and the verifier, a leak
+  filter checks every question for n-gram windows from the draft/framing
+  and for council-meta role markers ("advocate", "juror", "draft says",
+  …) not present in the operator's original prompt. **Fails closed.**
+  Added in the 2026-05-25 hardening pass after adversarial review caught
+  that schema+adapter alone don't constrain the *content* of the allowed
+  `verification_question` field.
+
+All three layers are needed; none is sufficient alone. CI gates:
+`tests/test_cove_isolation.py` (16 cases inc. 50-fixture Hypothesis fuzz
+on layers 1+2) and `tests/test_leak_filter.py` (12 cases inc. a regression
+that patches `decompose_draft` to return a leaky question and asserts
+Stage 3 aborts before Kimi sees it).
+
+The release ships **Phase A + Phase B + Phase E (E.0 + E.1) only** — full
+disclosure. That gets you the orchestrator skeleton, six adapter
+interfaces (Claude / Gemini / GPT / Qwen contributing + Grok-stub +
+Kimi-verifier), and Stage 3 verification with three-layer isolation.
+Phase E.2 (a real CoVe comparator replacing the current confidence-
+threshold placeholder) and Stages 0/1/2/4/5/6 are sketched in the spec
+but not implemented yet.
 
 What I'd love specific feedback on:
 
@@ -57,9 +71,9 @@ What I'd love specific feedback on:
    validate the submartingale-drift property at this dimension?
 
 Repo: https://github.com/Silberud/typed-llm-council
-Spec: [`docs/council_spec_v2.2.md`](https://github.com/Silberud/typed-llm-council/blob/main/docs/council_spec_v2.2.md)
+Spec: [`docs/internal_spec_v2.2.md`](https://github.com/Silberud/typed-llm-council/blob/main/docs/internal_spec_v2.2.md) (historical implementation directive — see disclaimer at top)
 Design notes: [`docs/design_notes.md`](https://github.com/Silberud/typed-llm-council/blob/main/docs/design_notes.md)
-The locked CI gate: [`tests/test_cove_isolation.py`](https://github.com/Silberud/typed-llm-council/blob/main/orchestrator/tests/test_cove_isolation.py)
+CI gates: [`tests/test_cove_isolation.py`](https://github.com/Silberud/typed-llm-council/blob/main/orchestrator/tests/test_cove_isolation.py) (layers 1+2) and [`tests/test_leak_filter.py`](https://github.com/Silberud/typed-llm-council/blob/main/orchestrator/tests/test_leak_filter.py) (layer 3)
 
 Pile on.
 

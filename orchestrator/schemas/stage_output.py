@@ -37,4 +37,9 @@ class VerifierAnswer(BaseModel):
 
     answer: str
     confidence: float = Field(ge=0.0, le=1.0)
+    # True iff the adapter successfully parsed an explicit numeric confidence
+    # from the model's response. False means the value above is a default,
+    # and Phase E.2's real comparator should route this answer to
+    # "needs review" rather than treating it as a confident agreement.
+    confidence_parsed: bool = True
     model_used: str | None = None

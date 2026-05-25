@@ -1,4 +1,14 @@
-# H5R LLM Council v2.2 — Implementation Specification
+# H5R LLM Council v2.2 — Internal Implementation Specification (historical)
+
+> **READER — please note:** This file is the **internal implementation
+> directive** the maintainer originally wrote to scaffold the v2.3 code with
+> Claude Code. It is preserved here for provenance / historical reference,
+> not as a polished public specification. It addresses Claude Code as the
+> implementer ("You are Claude Code…") and contains references to operator-
+> specific exceptions (the API-key path documented in
+> `docs/operator_setup.md`). For the public-facing design narrative see
+> `docs/design_notes.md` and the README. A cleaned public spec is a
+> potential Phase E+ deliverable.
 
 **For:** Claude Code (autonomous implementation agent)
 **Operator:** Igor Silberud

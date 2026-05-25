@@ -1,15 +1,25 @@
 """Stage 3 — CoVe Factored Verification (K2.6, non-voting).
 
-Spec §6 Stage 3 + invariants #2, #7:
-  - The Verifier (Kimi K2.6) receives ONLY operator_prompt + verification_question.
-  - It never sees Draft D, framing, advocate defence, juror critiques, persona prompts.
-  - Enforced at the schema layer (VerifierInput frozen + extra=forbid) AND at the
-    protocol layer (this module — only `VerifierInput(...)` crosses the kimi boundary).
-  - CI test `tests/test_cove_isolation.py` proves the invariant on every commit.
+Spec §6 Stage 3 + invariants #2, #7. Isolation is enforced at three layers
+— and ALL THREE are needed; none is sufficient alone:
 
-Module-level functions `decompose_draft` and `compare_answers` are intentionally
-module-level so the CI test can patch them. Both run with full draft/framing
-context — neither calls the verifier.
+  1. Schema layer  — VerifierInput is frozen + extra='forbid' (any field
+     other than operator_prompt + verification_question is a ValidationError).
+  2. Adapter layer — KimiAdapter inherits VerifierAdapter (not Contributing-
+     Adapter) and has no `ask()` method at all.
+  3. Content layer — `services.leak_filter.check_inputs_clean` runs between
+     `decompose_draft()` and `kimi.ask_verifier()` and fails closed when a
+     question contains forbidden n-gram windows from draft/framing or
+     council-meta role markers not present in the operator's original prompt.
+
+Layers 1 and 2 are structural (Tier 1). Layer 3 (added in the 2026-05-25
+hardening pass) closes the content channel that schemas can't reach: a leaky
+decomposer could put draft text inside the allowed `verification_question`
+field. See `orchestrator/services/leak_filter.py`.
+
+Module-level functions `decompose_draft` and `compare_answers_placeholder`
+are intentionally module-level so the CI test can patch them. Both run
+with full draft/framing context — neither calls the verifier.
 """
 from __future__ import annotations
 import asyncio
@@ -17,6 +27,9 @@ from typing import Any
 from orchestrator.adapters.base import VerifierAdapter
 from orchestrator.schemas.verifier_input import VerifierInput
 from orchestrator.schemas.stage_output import VerifierAnswer
+from orchestrator.services.leak_filter import (
+    LeakDetectedError, check_inputs_clean,
+)
 
 
 async def decompose_draft(prompt: str, draft_text: str, framing_note: str) -> list[str]:
@@ -54,16 +67,26 @@ async def decompose_draft(prompt: str, draft_text: str, framing_note: str) -> li
     return lines[:10]
 
 
-async def compare_answers(
-    claims_from_draft: list[str],
+async def compare_answers_placeholder(
+    questions: list[str],
     verifier_answers: list[VerifierAnswer],
 ) -> dict[str, Any]:
-    """Compare verifier answers against the draft's implicit claims.
+    """PLACEHOLDER — Phase E.2 will replace this with a real CoVe comparator.
 
-    The comparator (also Opus 4.7, in a real run) has access to draft + answers
-    but produces only an agreement/disagreement count and a list of flagged
-    items. For Phase E it ships as a confidence-threshold heuristic; full
-    Claude-driven comparison is the Phase F upgrade.
+    What this function does TODAY:
+      - Counts answers with confidence ≥ 0.5 as "agreements" and the rest as
+        "disagreements". The `questions` parameter is currently unused.
+      - This is a confidence-threshold heuristic, NOT a comparison of draft
+        claims against verifier answers. A confident "No, that's false"
+        from Kimi is counted as "agreement" because confidence is high.
+
+    What Phase E.2 will do:
+      - Call Claude (or another contributor model) as a comparator with the
+        draft claims, the verifier's answers, and a strict factual-alignment
+        rubric. Return real agreement/disagreement judgments per claim.
+
+    The README's Phase status table reflects this split (E.0 structural
+    isolation = done; E.1 leak filter = done; E.2 real comparator = pending).
     """
     agreements = 0
     disagreements = 0
@@ -74,7 +97,17 @@ async def compare_answers(
             flagged.append(ans.answer[:160])
         else:
             agreements += 1
-    return {"agreements": agreements, "disagreements": disagreements, "flagged": flagged}
+    return {
+        "agreements": agreements,
+        "disagreements": disagreements,
+        "flagged": flagged,
+        "comparator_mode": "placeholder_confidence_threshold",
+    }
+
+
+# Back-compat alias for callers that still reference the old name (and
+# pytest patches in `test_cove_isolation.py` that target this symbol).
+compare_answers = compare_answers_placeholder
 
 
 async def stage3_cove_verify(
@@ -99,12 +132,29 @@ async def stage3_cove_verify(
         raise RuntimeError(f"decomposer produced too few questions: {len(questions)}")
     questions = questions[:10]
 
-    # 2. Verifier calls — each carries ONLY VerifierInput. Batched in groups of 5,
+    # 2. LAYER-3 leak filter — fail closed if any question carries draft/
+    #    framing content beyond what the operator's prompt already contained.
+    #    See `orchestrator/services/leak_filter.py` for rules. This is the
+    #    content-channel guard that schema-level isolation cannot reach.
+    for q in questions:
+        try:
+            check_inputs_clean(
+                operator_prompt=prompt,
+                verification_question=q,
+                draft_text=draft_text,
+                framing_note=framing_note,
+            )
+        except LeakDetectedError as e:
+            raise RuntimeError(
+                f"Stage 3 aborted: decomposer produced a leaky question. {e}"
+            ) from e
+
+    # 3. Verifier calls — each carries ONLY VerifierInput. Batched in groups of 5,
     #    parallel within batch (spec §6 Stage 3).
     async def _verify_one(q: str) -> VerifierAnswer:
         payload = VerifierInput(
             operator_prompt=prompt,        # operator's question only
-            verification_question=q,        # decomposer output only
+            verification_question=q,        # decomposer output (leak-filtered above)
         )
         return await kimi.ask_verifier(payload)
 
@@ -114,8 +164,8 @@ async def stage3_cove_verify(
         batch_answers = await asyncio.gather(*[_verify_one(q) for q in batch])
         answers.extend(batch_answers)
 
-    # 3. Comparator (back outside the sandbox; can see draft + answers)
-    comparison = await compare_answers(questions, answers)
+    # 4. Comparator (placeholder until Phase E.2; see compare_answers_placeholder docstring)
+    comparison = await compare_answers_placeholder(questions, answers)
 
     return {
         "stage": 3,
