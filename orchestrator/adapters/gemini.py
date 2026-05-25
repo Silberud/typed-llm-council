@@ -25,10 +25,12 @@ class GeminiAdapter(ContributingAdapter):
 
     async def ask(self, prompt: str, *, timeout: float = 90.0) -> MemberResult | DroppedResult:
         # Spec said --prompt-file; actual flag is -p (or stdin).
-        # Empirical findings (Phase γ, 2026-05-24):
-        #  - `-p "" + stdin` hangs the CLI; pass the prompt as -p value.
-        #  - Without --skip-trust the CLI exits rc=55 in non-trusted dirs
-        #    (the orchestrator runs from arbitrary cwds).
+        # Empirical findings:
+        #  - `-p "" + stdin` hangs the CLI (Phase γ, 2026-05-24).
+        #  - Bare invocation reads prompt from stdin cleanly (probe 2026-05-25)
+        #    — switched here to keep prompt content off argv (Hermes #4
+        #    privacy finding). The `-p` value is intentionally omitted.
+        #  - Without --skip-trust the CLI exits rc=55 in non-trusted dirs.
         #  - gemini-3.1-pro-preview rate-limits aggressively; gemini-cli
         #    handles it with exponential backoff (~10s, 20s, 40s, 80s…), so
         #    we need a timeout that gives backoff room — default ≥180s.
@@ -37,9 +39,10 @@ class GeminiAdapter(ContributingAdapter):
             "--model", self.model,
             "--skip-trust",
             "--output-format", "json",
-            "-p", prompt,
         ]
-        result = await run_cli(argv, timeout=timeout, member=self.name)
+        # Pass the prompt via stdin instead of argv -p. Hermes finding #4:
+        # argv is visible to ps/audit logs; stdin is per-process-private.
+        result = await run_cli(argv, stdin=prompt, timeout=timeout, member=self.name)
         if isinstance(result, DroppedResult):
             return result
         rc, stdout, stderr, elapsed = result

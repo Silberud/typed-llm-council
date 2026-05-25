@@ -34,15 +34,23 @@ from typing import Iterable
 # enough drafter prose to be a real leak.
 DEFAULT_WINDOW = 8
 
-# Role/council-meta markers. Lowercased, matched case-insensitively. If any
-# of these appears in the question or operator_prompt without also appearing
-# in the operator's original prompt, the question is a leak.
+# Role/council-meta marker phrases. Lowercased, matched case-insensitively.
+# Multi-word ONLY — single words like "council" or "consensus" are too
+# generic to flag (Hypothesis fuzz found "COUNCIL000" triggering false
+# positives during testing). Multi-word phrases are far less likely to
+# appear in legitimate operator vocabulary and far more likely to indicate
+# council-meta language being injected by a leaky decomposer or tampered
+# upstream code.
 ROLE_MARKERS: tuple[str, ...] = (
-    "advocate", "juror", "skeptic", "chairman", "council",
-    "consensus", "dissent", "drafter", "researcher", "analyst",
-    "architect", "synthesise", "synthesize", "synthesis",
-    "draft says", "draft states", "draft claims", "the draft",
-    "council concluded", "council decided", "the council",
+    "the advocate", "the juror", "the skeptic", "the chairman",
+    "the drafter", "the analyst", "the researcher", "the architect",
+    "advocate defence", "advocate argued", "advocate said",
+    "juror critique", "juror argued", "juror said",
+    "the council", "this council",
+    "council concluded", "council decided",
+    "council consensus", "council dissent",
+    "draft says", "draft states", "draft claims",
+    "the draft", "drafter said", "drafter argued",
     "peer review",
 )
 

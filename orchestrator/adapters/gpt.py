@@ -59,9 +59,12 @@ class GPTAdapter(ContributingAdapter):
                 "-c", f'model_reasoning_effort="{self.reasoning_effort}"',
                 "--output-last-message", str(tmp),
                 "--json",
-                prompt,
+                # Prompt is passed via stdin (codex prints "Reading prompt
+                # from stdin..." and accepts cleanly). Hermes finding #4:
+                # keeps prompt content off argv where it would be visible
+                # to ps/audit logs. Verified 2026-05-25.
             ]
-            result = await run_cli(argv, timeout=timeout, member=self.name)
+            result = await run_cli(argv, stdin=prompt, timeout=timeout, member=self.name)
             if isinstance(result, DroppedResult):
                 return result
             rc, stdout, stderr, elapsed = result

@@ -57,30 +57,58 @@ def test_framing_window_blocked():
     assert "framing" in str(exc.value)
 
 
-@pytest.mark.parametrize("marker", ["advocate", "juror", "skeptic", "council", "consensus", "dissent"])
-def test_role_marker_blocked(marker):
+@pytest.mark.parametrize("phrase", [
+    "the advocate", "the juror", "the skeptic", "the council",
+    "council concluded", "draft says", "the draft", "peer review",
+])
+def test_role_marker_phrase_blocked(phrase):
+    """Multi-word role markers signal council-meta injection."""
     with pytest.raises(LeakDetectedError) as exc:
         check_leak(
-            question=f"What did the {marker} say about Company X?",
+            question=f"What did {phrase} say about Company X?"
+                     if not phrase.startswith("draft") and not phrase.startswith("council")
+                     else f"In this response, {phrase} that Company X is sound.",
             operator_prompt="Should we acquire Company X?",
             draft_text="",
             framing_note="",
         )
-    assert marker in str(exc.value).lower()
+    assert phrase in str(exc.value).lower()
+
+
+def test_single_word_council_in_operator_prompt_no_longer_false_positive():
+    """Regression: Hypothesis found operator_prompt='COUNCIL000' triggering
+    leak detection on bare 'council'. Multi-word-only markers fix this so
+    legitimate operator vocabulary using 'council', 'consensus', etc. as
+    single words doesn't false-positive."""
+    # This used to raise — now must NOT raise.
+    check_leak(
+        question="What is a council?",
+        operator_prompt="COUNCIL000",
+        draft_text="00000000000000000000000000000000000000000000000000",
+        framing_note="00000000000000000000",
+    )
+    check_inputs_clean(
+        operator_prompt="COUNCIL000",
+        verification_question="What is a council?",
+        draft_text="00000000000000000000000000000000000000000000000000",
+        framing_note="00000000000000000000",
+    )
 
 
 def test_marker_in_operator_prompt_is_allowed():
-    """If the operator legitimately uses a role word, the question can too."""
+    """If the operator legitimately uses a role-marker phrase, the question
+    can use that phrase too (suppression based on operator's own prompt)."""
     check_leak(
-        question="What is the council pattern?",
-        operator_prompt="Explain the council pattern in multi-agent LLM systems.",
+        question="What did the advocate of free trade argue?",
+        operator_prompt="Summarise what the advocate of free trade has historically argued.",
         draft_text="",
         framing_note="",
     )
 
 
 def test_check_inputs_clean_blocks_tampered_operator_prompt():
-    """Defensive: operator_prompt itself must be clean of draft content."""
+    """Defensive: operator_prompt itself must be clean of draft content.
+    Multi-word marker 'draft says' AND/OR the n-gram window match must catch this."""
     with pytest.raises(LeakDetectedError):
         check_inputs_clean(
             operator_prompt="The draft says: Company X is a sound acquisition at $50M",
