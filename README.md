@@ -46,13 +46,13 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 
 ```
 55/55 structural tests pass
-   (24 cove-isolation + 12 leak-filter + 11 adapter-smoke + 9 comparator)
+   (16 cove-isolation + 16 leak-filter + 13 comparator + 10 adapter-smoke)
  1/1 live Stage 3 integration smoke passes (real Claude + real Kimi)
 ```
 
 **Deferred-phase timeline:** there isn't one. This is a personal project; Phase D is the next milestone the maintainer plans to land, with no firm date — it depends on bandwidth. See [`ROADMAP.md`](ROADMAP.md) for per-phase scope, files, and effort estimates. Contributors welcome (see [`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
-**Adversarial review trail:** Hermes Agent (GPT-5.5) reviewed v2.3.0 on 24–25 May 2026 and raised 20 numbered findings. The maintainer applied two hardening passes (commits `a41cbd6`, `db2e7d2`, `6086c0b`); 19/20 are CLOSED and #9 is ADDRESSED-with-caveat. Per-finding status: [`docs/hermes_findings_status.md`](docs/hermes_findings_status.md). A fresh adversarial review from a different model identity is recommended before this repo flips public — self-audit doesn't replace independent scrutiny.
+**Adversarial review trail:** Hermes Agent (GPT-5.5) reviewed three times across 24–26 May 2026: Pass 1 raised 20 numbered findings; Pass 2 confirmed the technical core was credible after hardening (commits `a41cbd6`, `db2e7d2`, `6086c0b`, `7002578`) but flagged 10 doc-consistency items; Pass 3 confirmed those resolved and ruled the repo "basically public-ready" after one final test-count correction (commit `f05f1b9` + this one). Per-finding status: [`docs/hermes_findings_status.md`](docs/hermes_findings_status.md). The full review trail is preserved as part of the design-feedback story.
 
 ---
 
