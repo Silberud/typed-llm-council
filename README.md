@@ -49,7 +49,9 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
  1/1 live Stage 3 integration smoke passes
 ```
 
-**Deferred-phase timeline:** there isn't one. This is a personal project; Phase D is the next milestone the maintainer plans to land, with no firm date — it depends on bandwidth. Contributors welcome (see `CONTRIBUTING.md`).
+**Deferred-phase timeline:** there isn't one. This is a personal project; Phase D is the next milestone the maintainer plans to land, with no firm date — it depends on bandwidth. See [`ROADMAP.md`](ROADMAP.md) for per-phase scope, files, and effort estimates. Contributors welcome (see [`CONTRIBUTING.md`](CONTRIBUTING.md)).
+
+**Adversarial review trail:** Hermes Agent (GPT-5.5) reviewed v2.3.0 on 24–25 May 2026 and raised 20 numbered findings. The maintainer applied two hardening passes (commits `a41cbd6`, `db2e7d2`, `6086c0b`); 19/20 are CLOSED and #9 is ADDRESSED-with-caveat. Per-finding status: [`docs/hermes_findings_status.md`](docs/hermes_findings_status.md). A fresh adversarial review from a different model identity is recommended before this repo flips public — self-audit doesn't replace independent scrutiny.
 
 ---
 

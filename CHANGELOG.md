@@ -61,8 +61,18 @@ Phase A + Phase B + Phase E.0 + Phase E.1 of the 9-phase council plan.
   fence stripping, partial-response fallback, dispatch switching, and
   fail-closed-to-placeholder behaviour.
 
-### Known limitations (carried into v2.3.2)
-- **Phase D (Stages 0/1/2/5):** not implemented — `council <prompt>` exits non-zero.
+### v2.3.3 — self-review + roadmap docs
+
+- **`docs/hermes_findings_status.md`** — per-finding status table across
+  all 20 Hermes review items + 3 new findings surfaced during hardening.
+  19/20 CLOSED, 1 ADDRESSED-with-caveat (#9 framing).
+- **`ROADMAP.md`** — explicit scope, files, dependencies, acceptance
+  criteria, and effort estimate per deferred phase (C / D / F / G / H).
+- README + DISCUSSION_SEED note recommending a fresh adversarial review
+  from a different model identity before flipping public.
+
+### Known limitations (carried into v2.3.3)
+- **Phase D (Stages 0/1/2/5):** not implemented — `council <prompt>` exits non-zero. See ROADMAP.md.
 - **Phase C/F/G/H:** not implemented — see status table.
 - **Grok seat:** stubbed (no subscription-OAuth path on X Premium+).
 - **GPT model-pin:** Codex CLI 0.132.0 doesn't emit model id in events; the assertion logs a warning instead of asserting (CG-002).

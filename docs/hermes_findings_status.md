@@ -1,0 +1,70 @@
+# Hermes adversarial review — findings status
+
+Source: forensic review by GPT-5.5 (running in Hermes Agent / Nous Research)
+against the v2.3.0 initial release, 24–25 May 2026. Hermes raised 20
+numbered findings + a positive-findings summary.
+
+This file tracks each finding's resolution status across two subsequent
+hardening passes:
+
+- **Pass 1** (2026-05-24, commit `a41cbd6`): the initial Tier 1+2+3 pass.
+- **Pass 2** (2026-05-25, commits `db2e7d2` + `6086c0b`): argv→stdin
+  (#4) + real CoVe comparator (#3, Phase E.2).
+
+> **This is a self-review.** It documents the maintainer's belief about
+> which findings are addressed. A fresh adversarial review by a different
+> model identity (e.g. Hermes Agent / GPT-5.5 again) is recommended
+> before flipping the repo public, because *another* perspective is the
+> point — a self-audit cannot replace it.
+
+## Findings table
+
+| # | Finding (short) | Status | Where addressed |
+|---|---|---|---|
+| 1 | Verifier isolation claim materially overstated — schema blocks extra fields but doesn't constrain content of `verification_question`. | **CLOSED** (Pass 1 leak filter + Pass 2 marker refinement) | `services/leak_filter.py`, `stages/stage3_verification.py` |
+| 2 | Tests don't exercise the dangerous boundary — `decompose_draft` mocked everywhere. | **CLOSED** (Pass 1) | `tests/test_leak_filter.py::test_stage3_aborts_when_decomposer_returns_leaky_question` |
+| 3 | Stage 3 comparator is a confidence-threshold placeholder, not a real CoVe comparator. | **CLOSED** (Pass 2 — Phase E.2 real comparator) | `services/comparator.py::compare_answers_real`, dispatch in `stages/stage3_verification.py::compare_answers` |
+| 4 | Prompt privacy leak via argv (Gemini, GPT). | **CLOSED** (Pass 2) | `adapters/gemini.py`, `adapters/gpt.py` — both now stdin |
+| 5 | "Audit-grade transcript" overclaim when no transcript is written. | **CLOSED** (Pass 1) | README, architecture diagram, `docs/design_notes.md` |
+| 6 | Issue template misaligned with README; "until Hermes ships" typo. | **CLOSED** (Pass 1) | `.github/ISSUE_TEMPLATE/design-feedback.yml`, README, DISCUSSION_SEED |
+| 7 | H5 Resources provenance/IP needs explicit resolution. | **CLOSED** (Pass 1) | README acknowledgements section |
+| 8 | "Single planning + build session" wording invites dismissal. | **CLOSED** (Pass 1) | README acknowledgements softened |
+| 9 | "Type-level" language is partly rhetorical; runtime enforcement only. | **ADDRESSED w/ caveat** (Pass 1) | `adapters/kimi.py::ask_verifier` runtime `isinstance` check + `tests/test_adapter_smoke.py::test_kimi_ask_verifier_rejects_non_VerifierInput_at_runtime`. Framing kept ("structural adapter-level isolation") since runtime-enforced via Pydantic + class hierarchy. |
+| 10 | Kimi confidence fallback bug (default 0.7 → silently treated as agreement). | **CLOSED** (Pass 1) | `adapters/kimi.py` default → 0.5; `schemas/stage_output.py::VerifierAnswer.confidence_parsed` flag |
+| 11 | Config advertises Kimi keychain fields that code ignores. | **CLOSED** (Pass 1) | `supervisor.py::build_adapters` now wires through; `adapters/kimi.py::__init__` accepts kwargs |
+| 12 | Configurable Kimi endpoint can exfiltrate the API key. | **CLOSED** (Pass 1) | `adapters/kimi.py::_validate_endpoint` HTTPS+allowlist; override via `LLM_COUNCIL_KIMI_ENDPOINT_UNSAFE=1` |
+| 13 | Docs make brittle third-party/provider claims. | **CLOSED** (Pass 1) | README non-affiliation banner; `docs/operator_setup.md` dated observations |
+| 14 | Ultra-specific model names are fragile. | **CLOSED** (Pass 1) | README "Model compatibility matrix" with dated test status per seat |
+| 15 | Spec reads like an internal implementation directive. | **CLOSED** (Pass 1) | `docs/council_spec_v2.2.md` → `docs/internal_spec_v2.2.md` with explicit "historical/internal" header |
+| 16 | Stage numbering inconsistency (Stage 3 in design_notes vs spec). | **CLOSED** (Pass 1) | `docs/design_notes.md` Stage 3 → Stage 5 where synthesis is meant |
+| 17 | "All 6 adapters" wording misleading (Grok stubbed, Kimi non-voting). | **CLOSED** (Pass 1) | README status-table row reworded: "five contributing interfaces + one verifier" |
+| 18 | Lint is failing locally and CI ignores it. | **CLOSED** (Pass 1) | All ruff errors fixed; `.github/workflows/ci.yml` runs `ruff check .` as a blocking step |
+| 19 | Quickstart should not use bare `python3` on macOS. | **CLOSED** (Pass 1) | README quickstart uses `python3.12 -m venv` explicitly + `pip install --upgrade pip setuptools wheel` |
+| 20 | Positive findings list. | n/a — acknowledged | — |
+
+## New findings surfaced during the hardening passes (not in Hermes's 20)
+
+| ID | Finding | Status |
+|---|---|---|
+| N1 | Hypothesis fuzz found single-word "council" marker false-positiving on operator-side vocabulary ("COUNCIL000" as random `operator_prompt`). Pass 1 had `ROLE_MARKERS` as a flat list of single words + phrases. | **CLOSED** (Pass 2 — multi-word phrases only) |
+| N2 | Pass 2's multi-word markers still false-positived on Hypothesis-generated "COUNCIL CONCLUDED" as `operator_prompt`. | **CLOSED** (`check_inputs_clean` operator-prompt path is now n-gram-only; role markers stay for the verification_question path where they're meaningful) |
+| N3 | Test patches against `services.comparator.ClaudeAdapter.ask` fail because `ClaudeAdapter` is imported inside `compare_answers_real()` — patch target must be at source module. | **CLOSED** (`tests/test_comparator.py::_mock_claude` patches `orchestrator.adapters.claude.ClaudeAdapter.ask`) |
+
+## What remains genuinely OPEN
+
+1. **Fresh Hermes re-review.** This file is a self-audit. A second adversarial pass from a different model identity (e.g. Hermes Agent / GPT-5.5) on the post-Pass-2 commit `6086c0b` is recommended before flipping public.
+2. **Public flip itself.** Deliberately deferred to a separate session after the re-review.
+3. **Phases C / D / F / G / H** of the 9-phase plan. Roadmap at `ROADMAP.md`.
+4. **Live integration smoke for the real CoVe comparator.** Unit-tested but not yet exercised against real Claude on a hand-crafted misleading draft. Add `tests/_live/test_comparator_live.py` in a future session if quota is available.
+
+## Test totals across passes
+
+- v2.3.0 (initial): 24/24 + 1 live integration
+- After Pass 1: 39/39 structural + 1 live
+- After Pass 2: 55/55 structural + 1 live + 13 new comparator tests
+
+## Recommended next reviewer action
+
+Run Hermes Agent against `git@github.com:Silberud/typed-llm-council.git` at
+commit `6086c0b`. Compare any new findings against this file. Apply Tier 1
+fixes for anything material. Then we go public.
