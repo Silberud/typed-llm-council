@@ -71,22 +71,23 @@ async def compare_answers_placeholder(
     questions: list[str],
     verifier_answers: list[VerifierAnswer],
 ) -> dict[str, Any]:
-    """PLACEHOLDER — Phase E.2 will replace this with a real CoVe comparator.
+    """PLACEHOLDER comparator — kept as the DEFAULT path; Phase E.2's real
+    comparator is now available via config (see `services/comparator.py` and
+    `compare_answers` dispatch in this module).
 
-    What this function does TODAY:
+    What this function does:
       - Counts answers with confidence ≥ 0.5 as "agreements" and the rest as
-        "disagreements". The `questions` parameter is currently unused.
+        "disagreements". The `questions` parameter is intentionally unused
+        (the placeholder doesn't actually compare).
       - This is a confidence-threshold heuristic, NOT a comparison of draft
         claims against verifier answers. A confident "No, that's false"
         from Kimi is counted as "agreement" because confidence is high.
 
-    What Phase E.2 will do:
-      - Call Claude (or another contributor model) as a comparator with the
-        draft claims, the verifier's answers, and a strict factual-alignment
-        rubric. Return real agreement/disagreement judgments per claim.
-
-    The README's Phase status table reflects this split (E.0 structural
-    isolation = done; E.1 leak filter = done; E.2 real comparator = pending).
+    Why it's still the default:
+      - Phase E.2's real comparator (services/comparator.py) is unit-tested
+        with mocked Claude but not yet live-validated at scale. Until enough
+        live data accumulates, the placeholder is the safer default. Opt in
+        via `[stages.stage3] comparator_mode = "real"` in config.toml.
     """
     agreements = 0
     disagreements = 0

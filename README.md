@@ -16,7 +16,7 @@ A decoupled Python asyncio orchestrator that pits five model identities against 
 
 1. **Schema layer** — `VerifierInput` is `frozen=True, extra="forbid"`. Any field other than `operator_prompt` + `verification_question` is a `ValidationError`.
 2. **Adapter layer** — `KimiAdapter` inherits `VerifierAdapter`, not `ContributingAdapter`. It has no `ask()` method at all — calling `kimi.ask("…")` raises `AttributeError`, not a slightly weird answer.
-3. **Content layer** — between `decompose_draft()` and `kimi.ask_verifier()`, a leak filter (`services/leak_filter.py`) checks every verification question for n-gram windows from the draft/framing and for council-meta role markers ("advocate", "juror", "council", "draft says", …) not present in the operator's original prompt. **Fails closed** if a leaky decomposer would smuggle drafter prose into the allowed `verification_question` field.
+3. **Content layer** — between `decompose_draft()` and `kimi.ask_verifier()`, a leak filter (`services/leak_filter.py`) checks every verification question for n-gram windows from the draft/framing and for council-meta role marker phrases ("the advocate", "council concluded", "the draft", …) not present in the operator's original prompt. **Fails closed on detectable verbatim and procedural leakage.** This is a heuristic content-layer filter — not formal semantic noninterference. Paraphrastic leakage (a decomposer that rewords draft claims in its own words) can still pass; the boundary it closes is the *verbatim* and *role-meta* channels, not all of semantics. That is acceptable in practice because CoVe questions necessarily contain claim restatements; the filter is calibrated to allow short restatements while blocking longer drafter prose.
 
 Layers 1 and 2 are structural (Phase E.0). Layer 3 was added in the 2026-05-25 hardening pass (Phase E.1) after an adversarial review caught that schema+adapter alone don't constrain the *content* of the allowed field. **All three layers are needed; none is sufficient alone.** This is honestly stronger than the original CoVe paper's property (which doesn't isolate the verifier from "draft-derived" content at all — questions in CoVe normally do contain claim restatements).
 
@@ -36,7 +36,7 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 | D | Stages 0, 1, 2, 5 (framing, Self-MoA-Seq, D3 advocate-juror, PoLL synth) | ⏳ |
 | **E.0** | Stage 3 structural isolation (schema + adapter layers) | ✅ |
 | **E.1** | Stage 3 content-layer leak filter + regression tests | ✅ |
-| **E.2** | Real CoVe comparator — Claude-driven, batched (1 call/session) | ✅ opt-in via `[stages.stage3] comparator_mode = "real"` |
+| **E.2** | Real CoVe comparator — Claude-driven, batched (1 call/session) | ✅ unit-tested, opt-in via `[stages.stage3] comparator_mode = "real"`; **live validation pending** |
 | F | Stage 4 AceMAD aggregation + entropy flag | ⏳ |
 | G | Stage 6 FOCUS escalation + DRIFTJudge (Qwen Queue B) | ⏳ |
 | H | Persistent transcripts + SQLite WAL telemetry + bootstrap | ⏳ |
@@ -45,8 +45,9 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 **`council <prompt>` will deliberately exit non-zero** until D/F/G land. What works end-to-end today is **Stage 3 verification with three-layer isolation**, live-smoked against real Claude + real Kimi (7–8 decomposed questions → all pass the leak filter → 7–8 verifier answers in ~2–4 min wallclock).
 
 ```
-37/37 structural tests pass (24 cove-isolation + 12 leak-filter + 1 smoke)
- 1/1 live Stage 3 integration smoke passes
+55/55 structural tests pass
+   (24 cove-isolation + 12 leak-filter + 11 adapter-smoke + 9 comparator)
+ 1/1 live Stage 3 integration smoke passes (real Claude + real Kimi)
 ```
 
 **Deferred-phase timeline:** there isn't one. This is a personal project; Phase D is the next milestone the maintainer plans to land, with no firm date — it depends on bandwidth. See [`ROADMAP.md`](ROADMAP.md) for per-phase scope, files, and effort estimates. Contributors welcome (see [`CONTRIBUTING.md`](CONTRIBUTING.md)).
@@ -157,7 +158,7 @@ I'd genuinely like opinions on these — open an [Issue](../../issues) tagged `d
 
 | Seat | Configured model id | Test status |
 |---|---|---|
-| Claude (Drafter/Chair) | `claude-opus-4-7` | live-tested 2026-05-24 (Codex CLI shipping; gpt-5.5 in Codex Pro) |
+| Claude (Drafter/Chair) | `claude-opus-4-7` | live-tested 2026-05-24 via Claude Code CLI |
 | Gemini (Researcher) | `gemini-3.1-pro-preview` | code path live-tested; OAuth account was quota-throttled (TRANS-001) — adapter wiring is correct, full live confirmation pending |
 | GPT (Architect) | `gpt-5.5` | live-tested 2026-05-24 via Codex CLI 0.132.0 (model-pin degraded — see CG-002) |
 | Qwen (Analyst) | `qwen3.6:35b-a3b-coding-nvfp4` | live-tested 2026-05-24 (local Ollama, M3 Max) |

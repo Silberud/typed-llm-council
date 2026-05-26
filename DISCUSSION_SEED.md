@@ -34,12 +34,14 @@ on layers 1+2) and `tests/test_leak_filter.py` (12 cases inc. a regression
 that patches `decompose_draft` to return a leaky question and asserts
 Stage 3 aborts before Kimi sees it).
 
-The release ships **Phase A + Phase B + Phase E (E.0 + E.1) only** — full
-disclosure. That gets you the orchestrator skeleton, six adapter
+The release ships **Phase A + Phase B + Phase E (E.0 / E.1 / E.2 opt-in)**
+— full disclosure. That gets you the orchestrator skeleton, six adapter
 interfaces (Claude / Gemini / GPT / Qwen contributing + Grok-stub +
 Kimi-verifier), and Stage 3 verification with three-layer isolation.
-Phase E.2 (a real CoVe comparator replacing the current confidence-
-threshold placeholder) and Stages 0/1/2/4/5/6 are sketched in the spec
+Phase E.2 adds a Claude-driven batched CoVe comparator behind
+`[stages.stage3] comparator_mode = "real"`; the default remains the
+confidence-threshold placeholder until more live validation accumulates.
+Stages 0/1/2/4/5/6 are sketched in the spec and detailed in `ROADMAP.md`
 but not implemented yet.
 
 What I'd love specific feedback on:

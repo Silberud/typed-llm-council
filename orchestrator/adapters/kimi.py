@@ -6,8 +6,16 @@ DESIGN INVARIANTS — non-negotiable:
     raises AttributeError. tests/test_cove_isolation.py enforces this.
   - The ONLY method exposed is `ask_verifier(input: VerifierInput) -> VerifierAnswer`.
     `VerifierInput` is a frozen Pydantic model with `extra='forbid'` — any
-    field referring to Draft D, framing, persona, or council deliberation
-    raises ValidationError at construction.
+    EXTRA structured field referring to Draft D, framing, persona, or
+    council deliberation raises ValidationError at construction.
+
+  IMPORTANT — what the schema layer does NOT cover:
+    The schema constrains which FIELDS exist, not the CONTENT of the two
+    allowed fields. A `VerifierInput.verification_question` could in
+    principle carry draft content if it were constructed that way. The
+    *content channel* is closed by `services/leak_filter.py`, which Stage 3
+    applies between decomposition and this method. This adapter trusts
+    that filter; it does not re-verify content.
   - Auth: spec §4 invariant requires subscription-OAuth. docs/operator_setup.md
     documents the EX-001 exception — the H5R operator chose Moonshot API-key
     auth (Keychain-sourced) instead of the $19/mo Kimi Code subscription.

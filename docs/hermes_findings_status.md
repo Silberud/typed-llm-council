@@ -8,7 +8,7 @@ This file tracks each finding's resolution status across two subsequent
 hardening passes:
 
 - **Pass 1** (2026-05-24, commit `a41cbd6`): the initial Tier 1+2+3 pass.
-- **Pass 2** (2026-05-25, commits `db2e7d2` + `6086c0b`): argv→stdin
+- **Pass 2** (2026-05-25, commits `db2e7d2` + `7002578 (or later)`): argv→stdin
   (#4) + real CoVe comparator (#3, Phase E.2).
 
 > **This is a self-review.** It documents the maintainer's belief about
@@ -52,7 +52,7 @@ hardening passes:
 
 ## What remains genuinely OPEN
 
-1. **Fresh Hermes re-review.** This file is a self-audit. A second adversarial pass from a different model identity (e.g. Hermes Agent / GPT-5.5) on the post-Pass-2 commit `6086c0b` is recommended before flipping public.
+1. **Fresh Hermes re-review.** This file is a self-audit. A second adversarial pass from a different model identity (e.g. Hermes Agent / GPT-5.5) on the post-Pass-2 commit `7002578 (or later)` is recommended before flipping public.
 2. **Public flip itself.** Deliberately deferred to a separate session after the re-review.
 3. **Phases C / D / F / G / H** of the 9-phase plan. Roadmap at `ROADMAP.md`.
 4. **Live integration smoke for the real CoVe comparator.** Unit-tested but not yet exercised against real Claude on a hand-crafted misleading draft. Add `tests/_live/test_comparator_live.py` in a future session if quota is available.
@@ -66,5 +66,5 @@ hardening passes:
 ## Recommended next reviewer action
 
 Run Hermes Agent against `git@github.com:Silberud/typed-llm-council.git` at
-commit `6086c0b`. Compare any new findings against this file. Apply Tier 1
+commit `7002578 (or later)`. Compare any new findings against this file. Apply Tier 1
 fixes for anything material. Then we go public.

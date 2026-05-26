@@ -6,6 +6,22 @@ default_eta            = 1.0            # AceMAD weight-update temperature (§7.
 default_stage_timeout  = 90             # seconds, per-stage outer cap
 escalation_cap         = 1              # spec §6 Stage 6 hard cap
 
+[stages.stage3]
+# Comparator selection.
+#   "placeholder" — confidence-threshold heuristic (default; no extra LLM calls,
+#                   unit-tested, fast). NOT a real factual-alignment comparator.
+#   "real"        — Phase E.2 Claude-driven comparator. ONE batched Claude call
+#                   per Stage 3 session covering all (Q,A) pairs; returns
+#                   per-question SUPPORT / CONTRADICT / NOT_RELATE judgments.
+#                   See services/comparator.py::compare_answers_real.
+#
+# Fallback semantics: if comparator_mode is "real" but the Claude call fails
+# (network, malformed JSON), the dispatcher LOGS A WARNING and falls back to
+# the placeholder. Stage 3 must never abort because the comparator broke.
+# Consumers should inspect the returned `comparator_mode` field to know which
+# path actually ran ("real_claude_batched" vs "placeholder_confidence_threshold").
+comparator_mode = "placeholder"
+
 [acemad]
 entropy_low_threshold_fraction = 0.6    # h < 0.6 * max_entropy → flag (§7.5)
 entropy_spike_threshold        = 0.7    # any q_i outcome > 0.7 → flag
