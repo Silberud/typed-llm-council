@@ -134,25 +134,47 @@ def check_inputs_clean(
 ) -> None:
     """Defensive: check BOTH VerifierInput fields, not just the question.
 
-    Two checks with different suppression rules:
+    Two distinct checks with DIFFERENT rule sets — this matters:
 
-      - `verification_question` may legitimately echo content from
-        `operator_prompt` (the operator's own framing). So we suppress
-        windows/markers that also appear in operator_prompt.
-      - `operator_prompt` itself has NO prior legitimate context — it
-        should not contain draft/framing windows or role markers under
-        any circumstances. So we pass an empty string as the suppression
-        baseline.
+      Check #1 (verification_question): full check (n-gram windows from
+      draft/framing + ROLE_MARKERS), with operator_prompt as suppression
+      baseline (the question can legitimately echo operator-supplied text).
 
-    Stage 3 passes the unmodified operator prompt today, so this is
-    insurance against a future refactor that accidentally tampers with it.
+      Check #2 (operator_prompt): N-GRAM ONLY — no marker check. Rationale:
+      ROLE_MARKERS are multi-word phrases like "the council" or "council
+      concluded" which might legitimately appear in an operator's own
+      question wording. Hypothesis fuzz repeatedly found false positives
+      here. The realistic tampering threat for operator_prompt is upstream
+      code injecting draft/framing text into it, which n-gram windows
+      catch reliably. Marker-only "council prose injection without any
+      draft content" is a contrived scenario not worth false-positiving on.
     """
-    # Check #1: the question, with operator_prompt as legitimate context.
+    # Check #1: the question — full rules.
     check_leak(verification_question, operator_prompt=operator_prompt,
                draft_text=draft_text, framing_note=framing_note, window=window)
 
-    # Check #2: the operator_prompt itself, with NO suppression baseline.
-    # If the operator_prompt contains "the draft says" or 8-word windows
-    # from the draft, something upstream tampered with it.
-    check_leak(operator_prompt, operator_prompt="",
-               draft_text=draft_text, framing_note=framing_note, window=window)
+    # Check #2: operator_prompt tampering — n-gram only.
+    _check_ngrams_only(operator_prompt, draft_text=draft_text,
+                       framing_note=framing_note, window=window)
+
+
+def _check_ngrams_only(text: str, *, draft_text: str, framing_note: str,
+                       window: int) -> None:
+    """N-gram window check ONLY (no role-marker check). Used for the
+    operator_prompt tampering check where role markers would false-positive
+    on legitimate operator vocabulary."""
+    text_lower = text.lower()
+    for w in _windows(draft_text, window):
+        if w in text_lower:
+            raise LeakDetectedError(
+                kind=f"{window}-word window from draft",
+                evidence=w,
+                question_excerpt=text[:160],
+            )
+    for w in _windows(framing_note, window):
+        if w in text_lower:
+            raise LeakDetectedError(
+                kind=f"{window}-word window from framing",
+                evidence=w,
+                question_excerpt=text[:160],
+            )

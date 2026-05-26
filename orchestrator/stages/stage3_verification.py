@@ -105,9 +105,54 @@ async def compare_answers_placeholder(
     }
 
 
-# Back-compat alias for callers that still reference the old name (and
-# pytest patches in `test_cove_isolation.py` that target this symbol).
-compare_answers = compare_answers_placeholder
+def _comparator_mode_from_config() -> str:
+    """Read [stages.stage3] comparator_mode from config.toml.
+    Falls back to 'placeholder' on any error."""
+    try:
+        from orchestrator.supervisor import load_config
+        cfg = load_config()
+        mode = (cfg.get("stages", {})
+                .get("stage3", {})
+                .get("comparator_mode", "placeholder"))
+        if mode in ("placeholder", "real"):
+            return mode
+    except Exception:  # noqa: BLE001
+        pass
+    return "placeholder"
+
+
+async def compare_answers(
+    draft_text: str,
+    questions: list[str],
+    verifier_answers: list[VerifierAnswer],
+) -> dict[str, Any]:
+    """Dispatch entry point for the Stage 3 comparator.
+
+    Reads `[stages.stage3] comparator_mode` from config and dispatches to
+    either `compare_answers_placeholder` (default — confidence-threshold
+    heuristic) or `services.comparator.compare_answers_real` (Phase E.2 —
+    batched Claude judgment).
+
+    If the real comparator fails (Claude unavailable, parse failure), logs
+    a warning and falls back to the placeholder. A broken comparator must
+    never abort a Stage 3 session.
+
+    pytest patches against `compare_answers` continue to work (this is the
+    public entry point Stage 3 calls).
+    """
+    import logging
+    _log = logging.getLogger("llm-council.stages.stage3")
+    mode = _comparator_mode_from_config()
+    if mode == "real":
+        try:
+            from orchestrator.services.comparator import compare_answers_real
+            return await compare_answers_real(draft_text, questions, verifier_answers)
+        except Exception as e:  # noqa: BLE001
+            _log.warning(
+                "real comparator failed (%s: %s); falling back to placeholder",
+                type(e).__name__, e,
+            )
+    return await compare_answers_placeholder(questions, verifier_answers)
 
 
 async def stage3_cove_verify(
@@ -164,8 +209,9 @@ async def stage3_cove_verify(
         batch_answers = await asyncio.gather(*[_verify_one(q) for q in batch])
         answers.extend(batch_answers)
 
-    # 4. Comparator (placeholder until Phase E.2; see compare_answers_placeholder docstring)
-    comparison = await compare_answers_placeholder(questions, answers)
+    # 4. Comparator (dispatch entry point — reads config for placeholder vs real;
+    #    see `compare_answers` docstring above).
+    comparison = await compare_answers(draft_text, questions, answers)
 
     return {
         "stage": 3,

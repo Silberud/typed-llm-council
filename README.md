@@ -36,7 +36,7 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 | D | Stages 0, 1, 2, 5 (framing, Self-MoA-Seq, D3 advocate-juror, PoLL synth) | ⏳ |
 | **E.0** | Stage 3 structural isolation (schema + adapter layers) | ✅ |
 | **E.1** | Stage 3 content-layer leak filter + regression tests | ✅ |
-| **E.2** | Real CoVe comparator (currently a confidence-threshold placeholder) | ⏳ |
+| **E.2** | Real CoVe comparator — Claude-driven, batched (1 call/session) | ✅ opt-in via `[stages.stage3] comparator_mode = "real"` |
 | F | Stage 4 AceMAD aggregation + entropy flag | ⏳ |
 | G | Stage 6 FOCUS escalation + DRIFTJudge (Qwen Queue B) | ⏳ |
 | H | Persistent transcripts + SQLite WAL telemetry + bootstrap | ⏳ |

@@ -27,8 +27,41 @@ Phase A + Phase B + Phase E.0 + Phase E.1 of the 9-phase council plan.
 - `docs/operator_setup.md` — auth requirements per seat + EX-001 (Kimi API key) + CG-001 (Grok stub) + CG-002 (Codex model-pin degraded) + TRANS-001 (Gemini quota throttle).
 - `CONTRIBUTING.md` — pointers to load-bearing files; `_live/` test warning.
 
-### Known limitations (carried into this release)
-- **Phase E.2 (real CoVe comparator):** `compare_answers_placeholder` is a confidence-threshold heuristic, **not** a real factual-alignment comparator. Phase E.2 will replace it.
+### v2.3.1 — second hardening pass
+
+- **argv → stdin** for Gemini and GPT adapters (Hermes finding #4 fix).
+  Prompt content no longer visible to `ps`/audit logs. Probed working
+  2026-05-25; live GPT smoke confirmed.
+- **ROLE_MARKERS narrowed to multi-word phrases.** Hypothesis fuzz found
+  the single-word "council" marker false-positiving on operator-side
+  vocabulary; switched to multi-word phrases ("the council", "council
+  concluded", "the draft", etc.) that strongly signal council-meta
+  injection.
+- **`check_inputs_clean` for operator_prompt is n-gram-only.** Hypothesis
+  fuzz again found "COUNCIL CONCLUDED" as a random operator_prompt
+  triggering the multi-word marker check. The realistic operator_prompt
+  tampering threat is upstream draft-injection, which n-gram windows
+  catch reliably; role-marker check is now confined to the
+  verification_question path where it's meaningful.
+
+### v2.3.2 — Phase E.2: real CoVe comparator (opt-in)
+
+- **`services/comparator.py`** with `compare_answers_real()`: single
+  batched Claude call across all (question, answer) pairs; returns
+  per-question SUPPORT/CONTRADICT/NOT_RELATE judgments with rationales.
+- **`schemas/claim_judgment.py`**: `ClaimJudgment` Pydantic model.
+- **`stages/stage3_verification.py`** `compare_answers()` is the new
+  dispatch entry point (reads `[stages.stage3] comparator_mode` from
+  config). Default: placeholder. Real mode opt-in.
+- **Resilience:** if the real comparator call fails (Claude unavailable,
+  malformed JSON, network), the dispatcher logs a warning and falls back
+  to the placeholder. Stage 3 must never abort because the comparator
+  broke.
+- **`tests/test_comparator.py`** — 13 unit tests covering parser, JSON
+  fence stripping, partial-response fallback, dispatch switching, and
+  fail-closed-to-placeholder behaviour.
+
+### Known limitations (carried into v2.3.2)
 - **Phase D (Stages 0/1/2/5):** not implemented — `council <prompt>` exits non-zero.
 - **Phase C/F/G/H:** not implemented — see status table.
 - **Grok seat:** stubbed (no subscription-OAuth path on X Premium+).

@@ -71,6 +71,31 @@ the Chairman wears that hat too, in a clearly-flagged adversarial pass
 that is *not* synthesis. When the Skeptic seat ships, Stage 1.5 is
 explicitly scheduled for removal.
 
+## How the real CoVe comparator works (Phase E.2)
+
+The placeholder comparator counts answers with confidence ≥ 0.5 as
+"agreements" — it doesn't actually compare draft claims against verifier
+answers. The real comparator (`services/comparator.py:compare_answers_real`)
+sends a SINGLE batched Claude call with the draft + all (question, answer)
+pairs and asks Claude to classify each pair as `SUPPORT` / `CONTRADICT`
+/ `NOT_RELATE`. The output is a strict JSON array; parsing falls back per-
+question to `NOT_RELATE` if Claude's output is malformed. If the entire
+real-comparator call fails (Claude unavailable, network, etc.), the
+dispatcher logs a warning and falls back to the placeholder — a broken
+comparator must NEVER abort a Stage 3 session.
+
+Opt-in via `config.toml`:
+
+```toml
+[stages.stage3]
+comparator_mode = "real"   # default: "placeholder"
+```
+
+Cost: one extra Claude call per Stage 3 session (the call is batched
+across all 5–10 questions, not N separate calls). Default stays
+placeholder until enough live data accumulates to validate real-
+comparator behaviour at scale.
+
 ## Why anti-sycophancy in the persona prompts
 
 Every persona prompt forbids "great question", compliments, apologies, and
