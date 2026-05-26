@@ -12,6 +12,8 @@ has acceptance criteria in spec §11 — match those.
 
 ## Phase C — Anonymizer service
 
+> **Tracking Issue:** [#2](https://github.com/Silberud/typed-llm-council/issues/2). Claim it there if you want to work on this phase.
+
 **Scope.** Process-isolated anonymizer running on TCP `127.0.0.1:7711`,
 RAM-only label map, launchd-managed for auto-restart. Holds the
 `Response A` / `Response B` / `Response C` mapping during Stage 2 peer
@@ -39,6 +41,8 @@ recover authorship after Stage 3.
 ---
 
 ## Phase D — Stages 0, 1, 2, 5
+
+> **Tracking Issue:** [#3](https://github.com/Silberud/typed-llm-council/issues/3). Claim it there if you want to work on this phase. *Blocked by [#2](https://github.com/Silberud/typed-llm-council/issues/2) (Phase C).*
 
 **Scope.** The four stages that turn Stage 3 into an end-to-end council
 session. Without Phase D, `council <prompt>` deliberately exits non-zero.
@@ -78,6 +82,8 @@ DROPPED-voter handling proceeds with ≥3.
 
 ## Phase F — Stage 4 AceMAD aggregation + entropy flag
 
+> **Tracking Issue:** [#4](https://github.com/Silberud/typed-llm-council/issues/4). Claim it there if you want to work on this phase. *Blocked by [#3](https://github.com/Silberud/typed-llm-council/issues/3) (Phase D).*
+
 **Scope.** Per-voter Vote object with `verdict ∈ {APPROVE, REJECT,
 MODIFY}`, self-belief `p_i`, peer-prediction distribution `q_i` over
 the (other_voter, verdict) outcome space, Brier scoring, exponential
@@ -108,6 +114,8 @@ configurable.
 
 ## Phase G — Stage 6 FOCUS escalation + DRIFTJudge (Qwen Queue B)
 
+> **Tracking Issue:** [#5](https://github.com/Silberud/typed-llm-council/issues/5). Claim it there if you want to work on this phase. *Blocked by [#3](https://github.com/Silberud/typed-llm-council/issues/3) (D), [#4](https://github.com/Silberud/typed-llm-council/issues/4) (F).*
+
 **Scope.** FOCUS metric (Kaesberg et al., arXiv 2502.19559) for
 real-time drift detection; DRIFTPolicy injection re-running Stage 4;
 DRIFTJudge running on Qwen Queue B (same model as the contributor, but
@@ -134,6 +142,8 @@ hard cap enforced.
 ---
 
 ## Phase H — Telemetry + bootstrap
+
+> **Tracking Issue:** [#6](https://github.com/Silberud/typed-llm-council/issues/6). Claim it there if you want to work on this phase. *Blocked by [#3](https://github.com/Silberud/typed-llm-council/issues/3) (Phase D minimum); ideally also [#4](https://github.com/Silberud/typed-llm-council/issues/4) (F) and [#5](https://github.com/Silberud/typed-llm-council/issues/5) (G) for full schema.*
 
 **Scope.** SQLite WAL session database + `council-eval --bootstrap`
 against a ≥10-session labelled corpus. Includes per-stage timing,

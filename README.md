@@ -38,7 +38,7 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 | D | Stages 0, 1, 2, 5 (framing, Self-MoA-Seq, D3 advocate-juror, PoLL synth) | ⏳ |
 | **E.0** | Stage 3 structural isolation (schema + adapter layers) | ✅ |
 | **E.1** | Stage 3 content-layer leak filter + regression tests | ✅ |
-| **E.2** | Real CoVe comparator — Claude-driven, batched (1 call/session) | ✅ unit-tested, opt-in via `[stages.stage3] comparator_mode = "real"`; **live validation pending** |
+| **E.2** | Real CoVe comparator — Claude-driven, batched (1 call/session) | ✅ unit-tested + **live-validated** against real Claude (SUPPORT / CONTRADICT / NOT_RELATE all classify correctly on hand-crafted cases); opt-in via `[stages.stage3] comparator_mode = "real"` |
 | F | Stage 4 AceMAD aggregation + entropy flag | ⏳ |
 | G | Stage 6 FOCUS escalation + DRIFTJudge (Qwen Queue B) | ⏳ |
 | H | Persistent transcripts + SQLite WAL telemetry + bootstrap | ⏳ |
@@ -50,9 +50,20 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 55/55 structural tests pass
    (16 cove-isolation + 16 leak-filter + 13 comparator + 10 adapter-smoke)
  1/1 live Stage 3 integration smoke passes (real Claude + real Kimi)
+ 2/2 live comparator tests pass (real Claude judging synthetic answers)
 ```
 
-**Deferred-phase timeline:** there isn't one. This is a personal project; Phase D is the next milestone the maintainer plans to land, with no firm date — it depends on bandwidth. See [`ROADMAP.md`](ROADMAP.md) for per-phase scope, files, and effort estimates. Contributors welcome (see [`CONTRIBUTING.md`](CONTRIBUTING.md)).
+**Deferred phases — each has a tracking Issue you can claim:**
+
+| Phase | Issue | Title | Status |
+|---|---|---|---|
+| C | [#2](https://github.com/Silberud/typed-llm-council/issues/2) | Anonymizer service (TCP 127.0.0.1:7711) | open |
+| D | [#3](https://github.com/Silberud/typed-llm-council/issues/3) | Stages 0/1/2/5 (end-to-end council) | open, blocked by #2 |
+| F | [#4](https://github.com/Silberud/typed-llm-council/issues/4) | Stage 4 AceMAD aggregation | open, blocked by #3 |
+| G | [#5](https://github.com/Silberud/typed-llm-council/issues/5) | Stage 6 FOCUS + DRIFTJudge | open, blocked by #3, #4 |
+| H | [#6](https://github.com/Silberud/typed-llm-council/issues/6) | Telemetry + bootstrap | open, blocked by #3 |
+
+See [`ROADMAP.md`](ROADMAP.md) for per-phase scope, files, dependencies, and effort estimates. This is a personal project; Phase D is the next milestone the maintainer plans to land. Contributors welcome (see [`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
 **Adversarial review trail:** Hermes Agent (GPT-5.5) reviewed three times across 24–26 May 2026: Pass 1 raised 20 numbered findings; Pass 2 confirmed the technical core was credible after hardening (commits `a41cbd6`, `db2e7d2`, `6086c0b`, `7002578`) but flagged 10 doc-consistency items; Pass 3 confirmed those resolved and ruled the repo "basically public-ready" after one final test-count correction (commit `f05f1b9` + this one). Per-finding status: [`docs/hermes_findings_status.md`](docs/hermes_findings_status.md). The full review trail is preserved as part of the design-feedback story.
 
