@@ -56,8 +56,8 @@ audit-grade overclaim removed, spec relabelled internal.
 - `6086c0b` — **Phase E.2 real CoVe comparator** behind
   `[stages.stage3] comparator_mode = "real"`. ONE batched Claude call
   per Stage 3 session, returns per-question SUPPORT/CONTRADICT/NOT_RELATE
-  judgments. Default stays placeholder; real mode opt-in until live
-  validation accumulates. If the real call fails the dispatcher logs
+  judgments. Default stays placeholder; real mode remains opt-in. Later
+  live-smoke validation landed in `400a67d`. If the real call fails the dispatcher logs
   and falls back to placeholder (consumers should inspect the returned
   `comparator_mode` field).
 - `7002578` — `docs/hermes_findings_status.md` + `ROADMAP.md` for the
@@ -67,8 +67,8 @@ audit-grade overclaim removed, spec relabelled internal.
 
 Applied 10 doc-consistency items Hermes raised on the post-Pass-2 state:
 DISCUSSION_SEED reflects E.2 exists; README test count corrected to 55;
-`[stages.stage3]` section added to `config.toml`; E.2 README status now
-"unit-tested, opt-in; live validation pending"; leak-filter description
+`[stages.stage3]` section added to `config.toml`; E.2 README status then
+marked unit-tested and opt-in (live smoke landed later); leak-filter description
 softened ("verbatim/procedural", not "drafter prose"); Kimi docstring
 softened (schema constrains fields, not content); model-matrix Claude-
 row copy/paste fixed; `hermes_findings_status` HEAD reference updated.
@@ -79,6 +79,14 @@ row copy/paste fixed; `hermes_findings_status` HEAD reference updated.
   (16 cove-isolation + 16 leak-filter + 13 comparator + 10 adapter-smoke).
 - `0a989af` — `hermes_findings_status.md` trail-fidelity fix (an earlier
   global replace had corrupted the Pass-2 commit-history line).
+
+## Public live-validation follow-up — commits `400a67d`, `76b817d` (2026-05-26)
+
+- `400a67d` — added `orchestrator/tests/_live/test_comparator_live.py`,
+  validating the real Claude comparator on hand-crafted SUPPORT /
+  CONTRADICT / NOT_RELATE cases without spending Kimi quota.
+- `76b817d` — cross-linked ROADMAP phases to Issues #2–#6 and reflected
+  E.2 live-validation status in README.
 
 ## Public-launch polish — *this commit* (2026-05-26)
 
@@ -102,5 +110,5 @@ row copy/paste fixed; `hermes_findings_status` HEAD reference updated.
 - **Phase C / F / G / H:** not implemented — see status table.
 - **Grok seat:** stubbed (no subscription-OAuth path on X Premium+).
 - **GPT model-pin:** Codex CLI 0.132.0 doesn't emit model id in stage events; the assertion logs a warning instead of asserting (CG-002).
-- **Phase E.2 real comparator:** unit-tested with mocked Claude; **live validation pending**. Default remains the placeholder.
+- **Phase E.2 real comparator:** unit-tested and smoke-tested against live Claude on synthetic SUPPORT / CONTRADICT / NOT_RELATE cases. Default remains the placeholder; broader validation on real Stage 3 transcripts is future work.
 - **Leak filter is heuristic**, not formal semantic noninterference. Paraphrastic leakage can still pass; the filter closes verbatim and procedural channels.
