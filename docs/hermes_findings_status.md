@@ -60,15 +60,17 @@ passes that followed:
 
 ## What remains genuinely OPEN (post-public, 2026-05-26)
 
-1. **Phases C / D / F / G / H** of the 9-phase plan. Roadmap at `ROADMAP.md`.
-2. **Live integration smoke for the real CoVe comparator.** Unit-tested but not yet exercised against real Claude on a hand-crafted misleading draft. `tests/_live/test_comparator_live.py` would close this.
-3. **Independent external review.** The Hermes review chain (3 passes) was an adversarial-AI review by a different model identity, not human review. Outside human or third-party adversarial review is welcome via Discussions or Issues.
+1. **Phases C / D / F / G / H** of the 9-phase plan. Roadmap at `ROADMAP.md`; tracking Issues #2–#6 are open.
+2. **Independent external review.** The Hermes review chain was adversarial-AI review by a different model identity, not human review. Outside human or third-party adversarial review is welcome via Discussions or Issues.
+3. **Broader E.2 comparator validation.** The real comparator has now passed a small live-Claude smoke (`tests/_live/test_comparator_live.py`) covering SUPPORT / CONTRADICT / NOT_RELATE on synthetic answers. Larger validation on real Stage 3 transcripts remains future work.
+
+Public flip status: **complete** on 2026-05-26. Discussions are enabled and the repo is visible publicly.
 
 ## Test totals across passes
 
-- v2.3.0 (initial): 24/24 + 1 live integration
-- After Pass 1: 39/39 structural + 1 live
-- After Pass 2: 55/55 structural + 1 live + 13 new comparator tests
+- v2.3.0 (initial): 24/24 structural + 1 live Stage 3 integration
+- After Pass 1: 39/39 structural + 1 live Stage 3 integration
+- After Pass 2 / public cleanup: 55/55 structural + 1 live Stage 3 integration + 2/2 live comparator tests
 
 ## Recommended next reviewer action
 

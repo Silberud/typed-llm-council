@@ -28,7 +28,7 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 
 ## Status — what's actually in this release
 
-**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1) of a 9-phase plan.** Be explicit about that.
+**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1 + E.2 opt-in) of a 9-phase plan.** Be explicit about that.
 
 | Phase | What | Status |
 |---|---|---|
@@ -65,7 +65,7 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 
 See [`ROADMAP.md`](ROADMAP.md) for per-phase scope, files, dependencies, and effort estimates. This is a personal project; Phase D is the next milestone the maintainer plans to land. Contributors welcome (see [`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
-**Adversarial review trail:** Hermes Agent (GPT-5.5) reviewed three times across 24–26 May 2026: Pass 1 raised 20 numbered findings; Pass 2 confirmed the technical core was credible after hardening (commits `a41cbd6`, `db2e7d2`, `6086c0b`, `7002578`) but flagged 10 doc-consistency items; Pass 3 confirmed those resolved and ruled the repo "basically public-ready" after one final test-count correction (commit `f05f1b9` + this one). Per-finding status: [`docs/hermes_findings_status.md`](docs/hermes_findings_status.md). The full review trail is preserved as part of the design-feedback story.
+**Adversarial review trail:** Hermes Agent (GPT-5.5) reviewed the repository across multiple passes from 24–26 May 2026. Pass 1 raised 20 numbered findings against the initial private-staging release; subsequent hardening passes closed 19/20 and addressed the remaining framing caveat with runtime checks and more precise language. Later passes cleaned public-facing docs, validated the real E.2 comparator against live Claude on synthetic SUPPORT / CONTRADICT / NOT_RELATE cases, and corrected launch metadata. Per-finding status: [`docs/hermes_findings_status.md`](docs/hermes_findings_status.md). The review trail is preserved as part of the design-feedback story, not as a substitute for independent human review.
 
 ---
 
