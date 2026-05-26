@@ -4,18 +4,23 @@ Source: forensic review by GPT-5.5 (running in Hermes Agent / Nous Research)
 against the v2.3.0 initial release, 24–25 May 2026. Hermes raised 20
 numbered findings + a positive-findings summary.
 
-This file tracks each finding's resolution status across two subsequent
-hardening passes:
+This file tracks each finding's resolution status across the hardening
+passes that followed:
 
 - **Pass 1** (2026-05-24, commit `a41cbd6`): the initial Tier 1+2+3 pass.
-- **Pass 2** (2026-05-25, commits `db2e7d2` + `7002578 (or later)`): argv→stdin
-  (#4) + real CoVe comparator (#3, Phase E.2).
+- **Pass 2** (2026-05-25, commits `db2e7d2` + `6086c0b`): argv→stdin (#4)
+  + real CoVe comparator (#3, Phase E.2).
+- **Pass 2 docs** (2026-05-25, commit `7002578`): `hermes_findings_status.md`
+  and `ROADMAP.md` added.
+- **Pass 2 re-review fixes** (2026-05-26, commit `f05f1b9`): 10 doc-
+  consistency items Hermes raised on the post-Pass-2 state.
+- **Pass 3 fix** (2026-05-26, commit `587c2c8`): README per-file test-count
+  breakdown corrected.
 
-> **This is a self-review.** It documents the maintainer's belief about
-> which findings are addressed. A fresh adversarial review by a different
-> model identity (e.g. Hermes Agent / GPT-5.5 again) is recommended
-> before flipping the repo public, because *another* perspective is the
-> point — a self-audit cannot replace it.
+> **Self-audit history + three Hermes Agent reviews.** This file documents
+> the maintainer's belief, cross-checked against Hermes's three Agent
+> review passes. Hermes Pass 3 verdict on commit `587c2c8`:
+> *"basically public-ready as a design-feedback / prototype repo."*
 
 ## Findings table
 
