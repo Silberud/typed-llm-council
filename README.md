@@ -12,7 +12,9 @@
 
 ## TL;DR
 
-A decoupled Python asyncio orchestrator that pits five model identities against each other through a 7-stage deliberation protocol (Self-MoA-Seq drafting → D3 advocate/juror critique → CoVe factored verification → AceMAD peer-prediction voting → PoLL rotating-chair synthesis → FOCUS drift escalation). The architecturally distinct claim of this release is **structural adapter-level isolation between voting and verifying seats**, enforced at three independent layers:
+This repo is **building toward** a multi-model council orchestrator with a 7-stage deliberation protocol (Self-MoA-Seq drafting → D3 advocate/juror critique → CoVe factored verification → AceMAD peer-prediction voting → PoLL rotating-chair synthesis → FOCUS drift escalation). The **current release ships the adapter skeleton + a hardened Stage 3 (CoVe verifier-isolation) path**; the rest of the pipeline is sketched in the spec but not yet implemented — see the status table below and [`ROADMAP.md`](ROADMAP.md).
+
+The architecturally distinct claim of *what is currently implemented* is **structural adapter-level isolation between voting and verifying seats**, enforced at three independent layers:
 
 1. **Schema layer** — `VerifierInput` is `frozen=True, extra="forbid"`. Any field other than `operator_prompt` + `verification_question` is a `ValidationError`.
 2. **Adapter layer** — `KimiAdapter` inherits `VerifierAdapter`, not `ContributingAdapter`. It has no `ask()` method at all — calling `kimi.ask("…")` raises `AttributeError`, not a slightly weird answer.

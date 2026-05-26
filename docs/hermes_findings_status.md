@@ -17,10 +17,13 @@ passes that followed:
 - **Pass 3 fix** (2026-05-26, commit `587c2c8`): README per-file test-count
   breakdown corrected.
 
-> **Self-audit history + three Hermes Agent reviews.** This file documents
-> the maintainer's belief, cross-checked against Hermes's three Agent
-> review passes. Hermes Pass 3 verdict on commit `587c2c8`:
-> *"basically public-ready as a design-feedback / prototype repo."*
+> **Self-audit history + three Hermes Agent reviews → public on 2026-05-26.**
+> This file documents the maintainer's belief, cross-checked against
+> Hermes's three Agent review passes. Hermes Pass-3 verdict on commit
+> `587c2c8` was *"basically public-ready as a design-feedback / prototype
+> repo."* The repo was flipped public on 2026-05-26 after a final
+> doc-polish pass that addressed Hermes Pass-4's residual private-staging
+> language. **Repo is now PUBLIC.**
 
 ## Findings table
 
@@ -55,12 +58,11 @@ passes that followed:
 | N2 | Pass 2's multi-word markers still false-positived on Hypothesis-generated "COUNCIL CONCLUDED" as `operator_prompt`. | **CLOSED** (`check_inputs_clean` operator-prompt path is now n-gram-only; role markers stay for the verification_question path where they're meaningful) |
 | N3 | Test patches against `services.comparator.ClaudeAdapter.ask` fail because `ClaudeAdapter` is imported inside `compare_answers_real()` — patch target must be at source module. | **CLOSED** (`tests/test_comparator.py::_mock_claude` patches `orchestrator.adapters.claude.ClaudeAdapter.ask`) |
 
-## What remains genuinely OPEN
+## What remains genuinely OPEN (post-public, 2026-05-26)
 
-1. **Fresh Hermes re-review.** This file is a self-audit. A second adversarial pass from a different model identity (e.g. Hermes Agent / GPT-5.5) on the post-Pass-2 commit `7002578 (or later)` is recommended before flipping public.
-2. **Public flip itself.** Deliberately deferred to a separate session after the re-review.
-3. **Phases C / D / F / G / H** of the 9-phase plan. Roadmap at `ROADMAP.md`.
-4. **Live integration smoke for the real CoVe comparator.** Unit-tested but not yet exercised against real Claude on a hand-crafted misleading draft. Add `tests/_live/test_comparator_live.py` in a future session if quota is available.
+1. **Phases C / D / F / G / H** of the 9-phase plan. Roadmap at `ROADMAP.md`.
+2. **Live integration smoke for the real CoVe comparator.** Unit-tested but not yet exercised against real Claude on a hand-crafted misleading draft. `tests/_live/test_comparator_live.py` would close this.
+3. **Independent external review.** The Hermes review chain (3 passes) was an adversarial-AI review by a different model identity, not human review. Outside human or third-party adversarial review is welcome via Discussions or Issues.
 
 ## Test totals across passes
 
@@ -70,6 +72,11 @@ passes that followed:
 
 ## Recommended next reviewer action
 
-Run Hermes Agent against `git@github.com:Silberud/typed-llm-council.git` at
-commit `7002578 (or later)`. Compare any new findings against this file. Apply Tier 1
-fixes for anything material. Then we go public.
+The repo is now public. New reviewers — humans or other model identities
+— are invited to read the code (start with the three files in
+`CONTRIBUTING.md` *"Start by reading these three files"*), then open a
+[Discussion](https://github.com/Silberud/typed-llm-council/discussions)
+or an [Issue](https://github.com/Silberud/typed-llm-council/issues)
+tagged `design-feedback`. The five design questions in the README are
+the explicit invitation; pushback on the design hypothesis is the most
+useful contribution.
