@@ -20,26 +20,23 @@ releases.
 - Docs: correct the CHANGELOG description of Issue templates landed in v2.3.0.
 - Docs/examples: force the Stage 3 structural demo to use the placeholder
   comparator so it cannot make a real Claude comparator call under local config.
-- Tools: PR review bot (v0) — same-repo PRs trigger a structured single-LLM
-  forensic review via trusted base-branch `tools/pr_review` code, committed to
-  the PR branch as `docs/reviews/<PR>-iter<K>.md`. Advisory only; the maintainer
-  remains the merge gate. Prompt-injection defense via JSON-encoded untrusted
-  content + regex tripwires. v1 will swap the single-LLM call for the full
-  multi-stage council once Phases D + F land.
-- Security/tooling: harden the PR review workflow so review code runs from the
-  base branch checkout, generated artefact paths are constrained, branch-name
-  shell interpolation is quoted, and prompt-boundary markers are treated as
-  untrusted JSON string data.
-- Tools: reviewer cron (v1) — every 6h, iterates open PRs, runs (or reuses)
-  the v0 forensic review, and acts on the verdict: squash-merge on APPROVE,
-  Claude-generated fix-up commit on MODIFY (falls through to comment-only if
-  the patch doesn't apply cleanly), comment + `needs-maintainer` label on
-  REJECT/NEEDS-MAINTAINER. Workflow: `.github/workflows/council-reviewer-cron.yml`.
-- Auth migration: PR review bot + reviewer cron switched from Anthropic SDK +
-  `ANTHROPIC_API_KEY` to `claude` CLI + `CLAUDE_CODE_OAUTH_TOKEN`. Calls now
-  bill against the Claude Code Pro/Max subscription instead of pay-per-token.
-  Operator one-time setup: `claude` then `/install-github-app` populates the
-  repo secret. No more separate API key to manage.
+- **Architecture pivot — PR review is now a multi-vendor Claude Code slash command.**
+  The earlier CI-based PR review bot (PRs #15, #19, #20) is removed in favour of
+  `.claude/commands/review-pr.md` — a project-level slash command the maintainer invokes
+  inside Claude Code as `/review-pr <PR-number>`. The command **spawns three parallel external-CLI calls — one per LLM vendor** — via the Bash tool:
+  GPT-5.5 via `codex exec` (Architect), Gemini 3.1 via `gemini -p` (Researcher),
+  Qwen 3.6 via local Ollama (Analyst); chairman = Claude (the operator's
+  `claude` session). The chairman synthesises a verdict, writes the artefact to
+  `docs/reviews/<PR>-iter<K>.md`, then asks the operator (`AskUserQuestion`)
+  what to do. **First real run:** [`docs/reviews/24-iter1.md`](docs/reviews/24-iter1.md) —
+  3/3 vendors caught the same bug independently; one vendor surfaced a bonus
+  finding the other two missed. No GitHub Actions, no
+  `ANTHROPIC_API_KEY`, no `CLAUDE_CODE_OAUTH_TOKEN` — runs entirely within
+  the already-authenticated `claude` session.
+- Removed: `.github/workflows/pr-review.yml`, `.github/workflows/council-reviewer-cron.yml`,
+  `tools/pr_review/`, `orchestrator/tests/test_pr_review_bot.py`. Historical
+  plan docs at `docs/plans/2026-05-27-{pr-review-bot,reviewer-cron,oauth-migration}.md`
+  are kept as record of the wrong path we walked first.
 
 ## v2.3.0 — 2026-05-27
 

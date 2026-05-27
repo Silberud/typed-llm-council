@@ -26,9 +26,45 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 
 ---
 
+## Try it now — `/review-pr` slash command
+
+The most concrete artefact this repo currently ships is **a working multi-vendor council review you can run locally**:
+
+```
+cd ~/llm-council-public
+claude
+# inside Claude Code, type:
+/review-pr 24
+```
+
+This invokes [`.claude/commands/review-pr.md`](.claude/commands/review-pr.md), which:
+
+1. Fetches the PR diff + metadata via `gh`.
+2. Runs a deterministic prompt-injection pre-scan.
+3. **Spawns three parallel council members — each on a different LLM vendor**:
+   - **GPT-5.5 (Architect)** via `codex exec` (OpenAI / ChatGPT Pro)
+   - **Gemini 3.1 (Researcher)** via `gemini -p` (Google OAuth)
+   - **Qwen 3.6 (Analyst)** via local Ollama
+   - (Chairman = Claude — the operator's `claude` session)
+4. Synthesises their verdicts (`APPROVE` / `MODIFY` / `REJECT` + confidence).
+5. Writes a structured artefact to `docs/reviews/<PR>-iter<K>.md`.
+6. Asks the operator what to do next (`AskUserQuestion`).
+
+**No API keys, no OAuth tokens, no GitHub Actions secrets, no per-token billing** — runs entirely through your already-authenticated local CLIs.
+
+### Real example — the council reviewing PR #24
+
+Read [`docs/reviews/24-iter1.md`](docs/reviews/24-iter1.md). All three vendors **independently caught the same bug** (a stale test count) and one (Gemini) found a bonus dangling reference the other two missed. That's the council's value proposition demonstrated on a real PR: vendor diversity → blind-spot coverage.
+
+### Prerequisites
+
+See [`docs/council_quickstart.md`](docs/council_quickstart.md) for installing and authenticating each CLI.
+
+---
+
 ## Status — what's actually in this release
 
-**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1 + E.2 opt-in) of a 9-phase plan.** Be explicit about that.
+**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1 + E.2 opt-in) of a 9-phase plan, *plus* the working `/review-pr` slash command** (v0 of the multi-vendor council — majority vote, not yet AceMAD-weighted). Be explicit about that.
 
 | Phase | What | Status |
 |---|---|---|
