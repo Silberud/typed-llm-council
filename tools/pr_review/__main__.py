@@ -109,6 +109,16 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    # Gracefully no-op if the API key is missing — keeps the workflow green
+    # on first install (before the operator sets the secret) and on any
+    # ad-hoc run where the key isn't in the environment.
+    if not args.dry_run and not os.environ.get("ANTHROPIC_API_KEY"):
+        sys.stderr.write(
+            "ANTHROPIC_API_KEY not set — skipping review. "
+            "Set the repo secret to enable the bot.\n"
+        )
+        return 0
+
     metadata, diff_text, was_truncated = fetch_pr(args.pr)
     pi_flags = scan_for_injection(
         " ".join(

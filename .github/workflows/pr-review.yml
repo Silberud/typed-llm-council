@@ -49,9 +49,13 @@ jobs:
         run: |
           set -euo pipefail
           ARTEFACT=$(python -m tools.pr_review --pr ${{ github.event.pull_request.number }})
-          echo "artefact=$ARTEFACT" >> "$GITHUB_OUTPUT"
+          # `python -m tools.pr_review` exits 0 with empty stdout if the API
+          # key is missing — workflow stays green; operator can set the
+          # secret later and future PRs will produce reviews.
+          echo "artefact=${ARTEFACT:-}" >> "$GITHUB_OUTPUT"
 
       - name: Commit review artefact to PR branch
+        if: steps.review.outputs.artefact != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -64,6 +68,7 @@ jobs:
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
 
       - name: Comment on PR
+        if: steps.review.outputs.artefact != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
