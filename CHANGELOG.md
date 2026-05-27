@@ -88,7 +88,7 @@ row copy/paste fixed; `hermes_findings_status` HEAD reference updated.
 - `76b817d` — cross-linked ROADMAP phases to Issues #2–#6 and reflected
   E.2 live-validation status in README.
 
-## Public-launch polish — *this commit* (2026-05-26)
+## Public-launch polish — commit `ceb3bf0` (2026-05-26)
 
 - GitHub repo description updated from "(private staging)" to public-
   honest framing.

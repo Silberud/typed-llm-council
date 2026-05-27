@@ -18,6 +18,24 @@ Then look at **`orchestrator/tests/test_cove_isolation.py`** + **`orchestrator/t
 - **Bug reports** — open an Issue with reproducer steps. Include `python -m orchestrator.supervisor --status` output.
 - **Code contributions** — open a PR. Squash-merge by default; no force-pushes to `main`.
 
+## Plan-then-PR workflow (for non-trivial changes)
+
+This repo follows a forensic plan-doc-then-PR convention established in PR #7. For any change beyond a one-line fix:
+
+1. **Open a branch** (e.g. `feat/<short-slug>`, `fix/<short-slug>`, `docs/<short-slug>`).
+2. **Write a plan doc** at `docs/plans/YYYY-MM-DD-<short-slug>.md` using [`docs/plans/TEMPLATE.md`](docs/plans/TEMPLATE.md). The plan should include:
+   - an audit-loop stabilisation note (the recommendation set stayed unchanged for N consecutive rounds),
+   - per-task breakdown with explicit objectives, file changes, and verification commands,
+   - success criteria you'll grade yourself against.
+3. **Make the changes** in the same branch — the plan doc lands alongside the changes.
+4. **Open a PR** that links back to the plan doc and lists which task IDs are addressed.
+5. **Quality gates before requesting review:**
+   - `ruff check .` clean
+   - `pytest -q orchestrator/tests` green
+   - the inconsistencies the plan was supposed to fix are actually gone (re-run the audit greps from the plan doc)
+
+The existing entries under `docs/plans/` are examples of the structure — see them for the level of detail expected.
+
 ## Tests
 
 The default suite runs cleanly without credentials:
