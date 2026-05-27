@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)
 
-> Not affiliated with or endorsed by Anthropic, Google, OpenAI, Alibaba/Qwen, xAI, or Moonshot. All model providers are referenced by their public CLI/API names. No telemetry is sent anywhere by this code — everything is local.
+> Not affiliated with or endorsed by Anthropic, Google, OpenAI, Alibaba/Qwen, xAI, or Moonshot. All model providers are referenced by their public CLI/API names. This repo has no maintainer telemetry or error reporting; live model calls go only to providers you explicitly configure and authorize with your own credentials.
 
 ---
 
@@ -22,7 +22,7 @@ The architecturally distinct claim of *what is currently implemented* is **struc
 
 Layers 1 and 2 are structural (Phase E.0). Layer 3 was added in the 2026-05-25 hardening pass (Phase E.1) after an adversarial review caught that schema+adapter alone don't constrain the *content* of the allowed field. **All three layers are needed; none is sufficient alone.** This is honestly stronger than the original CoVe paper's property (which doesn't isolate the verifier from "draft-derived" content at all — questions in CoVe normally do contain claim restatements).
 
-Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz on layers 1+2) and `tests/test_leak_filter.py` (12 cases including a regression test that patches `decompose_draft` to return a leaky question and asserts Stage 3 aborts before Kimi sees it).
+Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz on layers 1+2) and `tests/test_leak_filter.py` (16 collected cases including a regression test that patches `decompose_draft` to return a leaky question and asserts Stage 3 aborts before Kimi sees it).
 
 ---
 

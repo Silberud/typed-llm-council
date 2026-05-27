@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from hypothesis import given, strategies as st, settings
+from hypothesis import assume, given, strategies as st, settings
 from pydantic import ValidationError
 
 # These imports assume the orchestrator package is installed in editable mode:
@@ -312,10 +312,22 @@ class TestPropertyBasedIsolation:
     ):
         """For any random (prompt, draft, framing), the K2.6 prompt must not
         contain draft or framing content."""
-        # Skip pathological short-fragment cases that would cause false positives
-        # (e.g., if random draft happens to be 'a' and prompt also contains 'a')
+        # Skip pathological short-fragment or overlap cases that would cause
+        # false positives. This property checks that clean decomposer questions
+        # do not leak draft/framing text to Kimi; cases where the randomly
+        # generated operator prompt already contains an 8-word window from the
+        # random draft/framing exercise the leak filter's fail-closed tampering
+        # path instead of the Kimi-prompt isolation invariant.
         if len(draft_text) < 50 or len(framing_note) < 20:
             return
+        op_lower = operator_prompt.lower()
+        for source in (draft_text, framing_note):
+            words = source.lower().split()
+            if len(words) >= 8:
+                assume(not any(
+                    " ".join(words[i:i + 8]) in op_lower
+                    for i in range(len(words) - 7)
+                ))
         
         transcript = CouncilTranscript(
             operator_prompt=operator_prompt,
