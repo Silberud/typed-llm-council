@@ -149,8 +149,16 @@ class JudgeDecision(BaseModel):
 
     @model_validator(mode="after")
     def clean_round_is_strict(self) -> "JudgeDecision":
-        """Clean rounds require no material changes, no material dissent, and evidence."""
+        """Clean rounds and verdicts must agree with material findings."""
         has_material_dissent = any(d.material for d in self.dissent_remaining)
+        if self.verdict == ReviewVerdict.APPROVE and self.material_required_changes:
+            msg = "APPROVE judge decisions cannot include material_required_changes"
+            raise ValueError(msg)
+        if self.verdict in {ReviewVerdict.MODIFY, ReviewVerdict.REJECT} and not (
+            self.material_required_changes or has_material_dissent
+        ):
+            msg = "MODIFY/REJECT judge decisions require material changes or material dissent"
+            raise ValueError(msg)
         if self.clean_round:
             problems = []
             if self.verdict != ReviewVerdict.APPROVE:
@@ -202,6 +210,66 @@ class ConvergenceRound(BaseModel):
     reviews: list[CouncilReview] = Field(min_length=1)
     judge: JudgeDecision
 
+    @model_validator(mode="after")
+    def reviewer_required_changes_are_accounted_for(self) -> "ConvergenceRound":
+        """Every reviewer-requested material change must be accepted or rejected."""
+        proposed_by_id: dict[str, set[str]] = {}
+        reviewer_ids = [review.reviewer_id for review in self.reviews]
+        duplicate_reviewer_ids = sorted({reviewer_id for reviewer_id in reviewer_ids if reviewer_ids.count(reviewer_id) > 1})
+        if duplicate_reviewer_ids:
+            msg = "duplicate reviewer_id values: " + ", ".join(duplicate_reviewer_ids)
+            raise ValueError(msg)
+        reviewer_id_set = set(reviewer_ids)
+        for review in self.reviews:
+            change_ids = [change.id for change in review.required_changes]
+            duplicate_change_ids = sorted({change_id for change_id in change_ids if change_ids.count(change_id) > 1})
+            if duplicate_change_ids:
+                msg = f"duplicate required_change ids for reviewer {review.reviewer_id}: " + ", ".join(
+                    duplicate_change_ids
+                )
+                raise ValueError(msg)
+            for change in review.required_changes:
+                proposed_by_id.setdefault(change.id, set()).add(review.reviewer_id)
+
+        accepted_coverage: set[tuple[str, str]] = set()
+        for accepted in self.judge.material_required_changes:
+            source_reviewers = set(accepted.source_reviewers)
+            unknown_sources = source_reviewers - reviewer_id_set - {"judge"}
+            if unknown_sources:
+                msg = "material_required_changes source_reviewers unknown: " + ", ".join(sorted(unknown_sources))
+                raise ValueError(msg)
+            if accepted.id not in proposed_by_id and "judge" not in source_reviewers:
+                msg = f"judge-originated material_required_changes must include judge source for {accepted.id}"
+                raise ValueError(msg)
+            for reviewer_id in source_reviewers - {"judge"}:
+                if reviewer_id not in proposed_by_id.get(accepted.id, set()):
+                    msg = f"material_required_changes source_reviewer {reviewer_id} did not propose {accepted.id}"
+                    raise ValueError(msg)
+            for reviewer_id in source_reviewers & proposed_by_id.get(accepted.id, set()):
+                accepted_coverage.add((accepted.id, reviewer_id))
+
+        rejected_coverage: set[tuple[str, str]] = set()
+        for rejected in self.judge.rejected_required_changes:
+            if rejected.id not in proposed_by_id:
+                msg = f"rejected_required_changes references unknown reviewer change {rejected.id}"
+                raise ValueError(msg)
+            if rejected.source_reviewer not in proposed_by_id[rejected.id]:
+                msg = f"rejected_required_changes source_reviewer {rejected.source_reviewer} did not propose {rejected.id}"
+                raise ValueError(msg)
+            rejected_coverage.add((rejected.id, rejected.source_reviewer))
+
+        proposed_pairs = {
+            (change_id, reviewer_id)
+            for change_id, reviewer_ids_for_change in proposed_by_id.items()
+            for reviewer_id in reviewer_ids_for_change
+        }
+        unaccounted = sorted(proposed_pairs - accepted_coverage - rejected_coverage)
+        if unaccounted:
+            rendered = ", ".join(f"{change_id}:{reviewer_id}" for change_id, reviewer_id in unaccounted)
+            msg = "unaccounted reviewer required_changes: " + rendered
+            raise ValueError(msg)
+        return self
+
 
 class ConvergenceLedger(BaseModel):
     """Append-only ledger for plan or execution convergence."""
@@ -216,34 +284,61 @@ class ConvergenceLedger(BaseModel):
     max_rounds: int = Field(default=9, ge=1)
     rounds: list[ConvergenceRound] = Field(default_factory=list)
     status: RunStatus = RunStatus.RUNNING
+    blocked_reason: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def ledger_state_is_consistent(self) -> "ConvergenceLedger":
-        """Deserialized ledgers must obey the same invariants as ``with_round``."""
+        """Deserialized ledgers must obey the same state machine as ``with_round``."""
+        clean_streak = 0
+        expected_status = RunStatus.RUNNING
+        expected_blocked_reason: str | None = None
         for expected, round_ in enumerate(self.rounds, start=1):
             if round_.round_number != expected:
                 msg = f"round_number must be {expected}, got {round_.round_number}"
                 raise ValueError(msg)
-        if self.converged and self.status != RunStatus.CONVERGED:
-            msg = "converged ledger status must be CONVERGED"
+            if expected_status != RunStatus.RUNNING:
+                msg = f"terminal {expected_status.value} round cannot be followed by more rounds"
+                raise ValueError(msg)
+
+            if round_.judge.verdict == ReviewVerdict.REJECT:
+                expected_status = RunStatus.BLOCKED
+                expected_blocked_reason = round_.judge.rationale
+            else:
+                clean_streak = clean_streak + 1 if round_.judge.clean_round else 0
+                if clean_streak >= self.clean_rounds_required:
+                    expected_status = RunStatus.CONVERGED
+                elif expected >= self.max_rounds:
+                    expected_status = RunStatus.FAILED_MAX_ROUNDS
+
+        if self.status != expected_status:
+            msg = f"ledger status must be {expected_status.value}, got {self.status.value}"
             raise ValueError(msg)
-        if not self.converged and self.status == RunStatus.CONVERGED:
-            msg = "CONVERGED status requires enough consecutive clean rounds"
-            raise ValueError(msg)
-        if len(self.rounds) >= self.max_rounds and not self.converged and self.status == RunStatus.RUNNING:
-            msg = "ledger at max_rounds without convergence cannot remain RUNNING"
+        if self.status == RunStatus.BLOCKED:
+            if not self.blocked_reason:
+                msg = "BLOCKED status requires blocked_reason"
+                raise ValueError(msg)
+            if self.blocked_reason != expected_blocked_reason:
+                msg = "blocked_reason must match final REJECT judge rationale"
+                raise ValueError(msg)
+        elif self.blocked_reason is not None:
+            msg = "blocked_reason is only valid when status is BLOCKED"
             raise ValueError(msg)
         return self
 
-    @property
-    def consecutive_clean_rounds(self) -> int:
-        """Count clean rounds from the end of the ledger backwards."""
+    @staticmethod
+    def _count_consecutive_clean_rounds(rounds: list[ConvergenceRound]) -> int:
+        """Count clean rounds from the end of ``rounds`` backwards."""
         count = 0
-        for round_ in reversed(self.rounds):
+        for round_ in reversed(rounds):
             if not round_.judge.clean_round:
                 break
             count += 1
         return count
+
+    @property
+    def consecutive_clean_rounds(self) -> int:
+        """Count clean rounds from the end of the ledger backwards."""
+        return self._count_consecutive_clean_rounds(self.rounds)
 
     @property
     def converged(self) -> bool:
@@ -260,9 +355,19 @@ class ConvergenceLedger(BaseModel):
             msg = f"round_number must be {expected_round_number}, got {round_.round_number}"
             raise ValueError(msg)
         next_rounds = [*self.rounds, round_]
-        next_ledger = self.model_copy(update={"rounds": next_rounds})
-        if next_ledger.converged:
-            return next_ledger.model_copy(update={"status": RunStatus.CONVERGED})
-        if len(next_rounds) >= self.max_rounds:
-            return next_ledger.model_copy(update={"status": RunStatus.FAILED_MAX_ROUNDS})
-        return next_ledger.model_copy(update={"status": RunStatus.RUNNING})
+        if round_.judge.verdict == ReviewVerdict.REJECT:
+            status = RunStatus.BLOCKED
+            blocked_reason = round_.judge.rationale
+        elif self._count_consecutive_clean_rounds(next_rounds) >= self.clean_rounds_required:
+            status = RunStatus.CONVERGED
+            blocked_reason = None
+        elif len(next_rounds) >= self.max_rounds:
+            status = RunStatus.FAILED_MAX_ROUNDS
+            blocked_reason = None
+        else:
+            status = RunStatus.RUNNING
+            blocked_reason = None
+
+        data = self.model_dump()
+        data.update({"rounds": next_rounds, "status": status, "blocked_reason": blocked_reason})
+        return type(self).model_validate(data)
