@@ -71,6 +71,8 @@ Public flip status: **complete** on 2026-05-26. Discussions are enabled and the 
 - v2.3.0 (initial): 24/24 structural + 1 live Stage 3 integration
 - After Pass 1: 39/39 structural + 1 live Stage 3 integration
 - After Pass 2 / public cleanup: 55/55 structural + 1 live Stage 3 integration + 2/2 live comparator tests
+- After post-tag hardening (PRs #12/#13/#16/#17/#18): 63/63 structural + 1 live Stage 3 integration + 2/2 live comparator
+- After slash-command pivot (PR #27, current): 60/60 structural + 1 live Stage 3 integration + 2/2 live comparator (PR #27 removed `test_pr_review_bot.py` along with the CI bot it tested)
 
 ## Recommended next reviewer action
 

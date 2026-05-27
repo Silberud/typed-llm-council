@@ -1,6 +1,8 @@
 # Reviewer Cron (v1) Implementation Plan
 
-> **Status:** Plan stabilised after 3 consecutive zero-finding rounds.
+> **⚠️ DEPRECATED — historical record only.** The reviewer cron was implemented as PR #19 but **removed** in PR #27 alongside the per-PR bot it depended on. The replacement architecture is a manually-invoked Claude Code slash command (see [`2026-05-27-slash-command-pivot.md`](2026-05-27-slash-command-pivot.md)). No `.github/workflows/council-reviewer-cron.yml` exists on `main` anymore.
+
+> **Original status (preserved):** Plan stabilised after 3 consecutive zero-finding rounds.
 
 **Goal:** Add a 6-hourly scheduled GitHub Action that iterates every open PR, runs the v0 per-PR reviewer (already shipped in PR #15), parses the verdict, and **acts** on it: auto-merge on APPROVE, fix-up commit on MODIFY, comment+label on REJECT/NEEDS-MAINTAINER. Pairs with Hermes's own 15-minute opener cron (operator-managed on the Hermes Claude Code instance).
 

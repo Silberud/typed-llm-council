@@ -20,14 +20,17 @@ releases.
 - Docs: correct the CHANGELOG description of Issue templates landed in v2.3.0.
 - Docs/examples: force the Stage 3 structural demo to use the placeholder
   comparator so it cannot make a real Claude comparator call under local config.
-- **Architecture pivot — PR review is now a Claude Code slash command.**
+- **Architecture pivot — PR review is now a multi-vendor Claude Code slash command.**
   The earlier CI-based PR review bot (PRs #15, #19, #20) is removed in favour of
-  `.claude/commands/review-pr.md` — a project-level slash command Igor invokes
-  inside Claude Code as `/review-pr <PR-number>`. The command spawns three
-  parallel subagents via the native Agent tool (Code Reviewer / Security
-  Auditor / Convention Auditor — all Opus 4.7), synthesizes their verdicts,
-  writes the artefact to `docs/reviews/<PR>-iter<K>.md`, then asks the
-  operator (`AskUserQuestion`) what to do. No GitHub Actions, no
+  `.claude/commands/review-pr.md` — a project-level slash command the maintainer invokes
+  inside Claude Code as `/review-pr <PR-number>`. The command **spawns three parallel external-CLI calls — one per LLM vendor** — via the Bash tool:
+  GPT-5.5 via `codex exec` (Architect), Gemini 3.1 via `gemini -p` (Researcher),
+  Qwen 3.6 via local Ollama (Analyst); chairman = Claude (the operator's
+  `claude` session). The chairman synthesises a verdict, writes the artefact to
+  `docs/reviews/<PR>-iter<K>.md`, then asks the operator (`AskUserQuestion`)
+  what to do. **First real run:** [`docs/reviews/24-iter1.md`](docs/reviews/24-iter1.md) —
+  3/3 vendors caught the same bug independently; one vendor surfaced a bonus
+  finding the other two missed. No GitHub Actions, no
   `ANTHROPIC_API_KEY`, no `CLAUDE_CODE_OAUTH_TOKEN` — runs entirely within
   the already-authenticated `claude` session.
 - Removed: `.github/workflows/pr-review.yml`, `.github/workflows/council-reviewer-cron.yml`,
