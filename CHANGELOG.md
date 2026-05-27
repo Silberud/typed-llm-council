@@ -35,6 +35,9 @@ releases.
   Claude-generated fix-up commit on MODIFY (falls through to comment-only if
   the patch doesn't apply cleanly), comment + `needs-maintainer` label on
   REJECT/NEEDS-MAINTAINER. Workflow: `.github/workflows/council-reviewer-cron.yml`.
+- Security/tooling: harden reviewer-cron auto-merge so APPROVE verdicts still
+  fail closed unless GitHub reports non-empty green PR checks, and machine-force
+  `NEEDS-MAINTAINER` for truncated PR diffs.
 
 ## v2.3.0 — 2026-05-27
 

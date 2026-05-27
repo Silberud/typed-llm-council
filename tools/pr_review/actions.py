@@ -36,6 +36,51 @@ def merge_pr(pr_number: int) -> bool:
         return False
 
 
+def pr_checks_green(pr_number: int) -> bool:
+    """Return True only when GitHub reports non-empty, completed PR checks.
+
+    The reviewer cron may act on LLM review verdicts, but merge is a higher-trust
+    operation than commenting. Fail closed if checks are absent, pending,
+    failing, or the GitHub API/CLI call itself fails.
+    """
+    import json
+
+    try:
+        res = _run(
+            [
+                "gh",
+                "pr",
+                "checks",
+                str(pr_number),
+                "--json",
+                "name,state,bucket",
+            ]
+        )
+    except subprocess.CalledProcessError as e:
+        log.warning("check lookup failed for PR #%d: %s", pr_number, e.stderr)
+        return False
+
+    try:
+        checks = json.loads(res.stdout)
+    except json.JSONDecodeError:
+        log.warning("check lookup returned invalid JSON for PR #%d", pr_number)
+        return False
+
+    if not checks:
+        log.warning("PR #%d has no reported checks; refusing auto-merge", pr_number)
+        return False
+
+    green_states = {"pass", "success", "skipping", "skipped"}
+    not_green = [
+        c for c in checks
+        if (c.get("bucket") or c.get("state") or "").lower() not in green_states
+    ]
+    if not_green:
+        log.info("PR #%d checks are not green: %s", pr_number, not_green)
+        return False
+    return True
+
+
 def push_fixup(pr_number: int, head_ref: str, patch_text: str, message: str) -> bool:
     """Apply a unified-diff patch to the PR branch and push it.
 

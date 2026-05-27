@@ -30,6 +30,7 @@ from .actions import (
     find_latest_review,
     list_open_prs,
     merge_pr,
+    pr_checks_green,
     push_fixup,
 )
 
@@ -179,7 +180,16 @@ def dispatch(pr: dict, verdict: str | None, review_path: pathlib.Path, dry_run: 
 
     if verdict in ("APPROVE", "APPROVE-WITH-MINOR-MODIFY"):
         if dry_run:
-            return f"would-merge ({verdict})"
+            return f"would-merge-if-checks-green ({verdict})"
+        if not pr_checks_green(n):
+            comment_and_label(
+                n,
+                f"{COMMENT_HEADER}: verdict {verdict}, but auto-merge is blocked "
+                "because PR checks are absent, pending, or not green. Maintainer "
+                f"review required. See [`{review_path}`].",
+                label="needs-maintainer",
+            )
+            return "blocked-checks-not-green"
         if verdict == "APPROVE-WITH-MINOR-MODIFY":
             comment_and_label(
                 n,

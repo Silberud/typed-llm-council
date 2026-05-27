@@ -31,10 +31,10 @@ Each review contains:
 
 ## What it does NOT do
 
-- **The bot never merges or blocks.** All decisions are advisory; the maintainer remains the merge gate.
+- **The per-PR review bot never merges or blocks.** It writes advisory review artefacts only. The separate scheduled reviewer cron may act on those verdicts for same-repo PRs, but merge is fail-closed behind GitHub-reported green checks; absent, pending, or failing checks require maintainer review.
 - **The bot does not run on forks.** Forks don't have access to the repo's secrets, so the workflow exits early (`if: head.repo.full_name == repository`). Same-repo PRs get full review.
 - **The bot does not execute reviewer code from the PR.** It reads PR metadata and diff via the GitHub API, runs `tools/pr_review` from the base branch checkout, and copies only the generated markdown artefact into the PR branch. The regular CI workflow, not this bot, is responsible for running tests.
-- **The bot does not auto-merge.** Even on APPROVE verdicts.
+- **The bot fail-closes on incomplete review coverage.** If the diff is truncated before it reaches the reviewer model, the required decision is `NEEDS-MAINTAINER`, not `APPROVE`.
 
 ## Prompt-injection defense
 

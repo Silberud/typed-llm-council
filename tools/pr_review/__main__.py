@@ -34,6 +34,10 @@ REPO = "Silberud/typed-llm-council"
 DIFF_TRUNCATE_AT = 50_000
 DEFAULT_MODEL = "claude-opus-4-7"
 REVIEWS_DIR = pathlib.Path("docs/reviews")
+VERDICT_PATTERN = re.compile(
+    r"\*\*(APPROVE-WITH-MINOR-MODIFY|APPROVE|MODIFY|REJECT|NEEDS-MAINTAINER)\b[^*]*\*\*",
+    re.IGNORECASE,
+)
 
 
 def _gh(*args: str) -> str:
@@ -99,6 +103,30 @@ def call_claude(system_prompt: str, user_message: str, model: str) -> str:
     return "".join(
         block.text for block in response.content if block.type == "text"
     )
+
+
+def enforce_truncated_diff_verdict(review_md: str, diff_truncated: bool) -> str:
+    """Ensure truncated-diff reviews cannot produce actionable cron verdicts."""
+    if not diff_truncated:
+        return review_md
+
+    required = (
+        "\n\n### Required actions before merge\n"
+        "- Full diff was truncated before automated review; maintainer must review "
+        "the complete PR diff before merge."
+    )
+    m = re.search(r"## Decision\b(.*?)(\n## |\Z)", review_md, re.S)
+    if not m:
+        return review_md.rstrip() + "\n\n## Decision\n**NEEDS-MAINTAINER**\n" + required + "\n"
+
+    decision_section = m.group(1)
+    if VERDICT_PATTERN.search(decision_section):
+        fixed_section = VERDICT_PATTERN.sub("**NEEDS-MAINTAINER**", decision_section, count=1)
+    else:
+        fixed_section = "\n**NEEDS-MAINTAINER**\n" + decision_section
+    if "Full diff was truncated before automated review" not in fixed_section:
+        fixed_section = fixed_section.rstrip() + required + "\n"
+    return review_md[:m.start(1)] + fixed_section + review_md[m.end(1):]
 
 
 def main() -> int:
@@ -171,7 +199,10 @@ def main() -> int:
         pi_flags=pi_flags,
     )
 
-    review_md = call_claude(SYSTEM_PROMPT, user_msg, args.model)
+    review_md = enforce_truncated_diff_verdict(
+        call_claude(SYSTEM_PROMPT, user_msg, args.model),
+        was_truncated,
+    )
 
     REVIEWS_DIR.mkdir(parents=True, exist_ok=True)
     output_path.write_text(review_md)
