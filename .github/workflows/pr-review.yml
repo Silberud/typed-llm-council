@@ -26,12 +26,20 @@ jobs:
       contents: write          # commit the review artefact to PR branch
       pull-requests: write     # comment with the link
     steps:
-      - name: Checkout PR head
+      - name: Checkout PR head for artefact commit only
         uses: actions/checkout@v6
         with:
+          path: pr-head
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout trusted reviewer code
+        uses: actions/checkout@v6
+        with:
+          path: trusted-reviewer
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -46,6 +54,8 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_REVIEW_EXISTING_REVIEWS_DIR: ../pr-head/docs/reviews
+        working-directory: trusted-reviewer
         run: |
           set -euo pipefail
           ARTEFACT=$(python -m tools.pr_review --pr ${{ github.event.pull_request.number }})
@@ -58,14 +68,28 @@ jobs:
         if: steps.review.outputs.artefact != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           ARTEFACT="${{ steps.review.outputs.artefact }}"
+          ARTEFACT="$ARTEFACT" python - <<'PY'
+          import os
+          import re
+          import sys
+
+          artefact = os.environ["ARTEFACT"]
+          if not re.fullmatch(r"docs/reviews/[0-9]+-iter[0-9]+\.md", artefact):
+              sys.stderr.write(f"Unexpected artefact path: {artefact}\n")
+              sys.exit(1)
+          PY
+          mkdir -p "pr-head/$(dirname "$ARTEFACT")"
+          cp "trusted-reviewer/$ARTEFACT" "pr-head/$ARTEFACT"
+          cd pr-head
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$ARTEFACT"
           git diff --staged --quiet || git commit -m "review: add $(basename $ARTEFACT) [skip ci]"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git push origin "HEAD:${PR_HEAD_REF}"
 
       - name: Comment on PR
         if: steps.review.outputs.artefact != ''
@@ -74,4 +98,4 @@ jobs:
         run: |
           ARTEFACT="${{ steps.review.outputs.artefact }}"
           gh pr comment ${{ github.event.pull_request.number }} \
-            --body "🔎 Automated review: [\`$ARTEFACT\`](https://github.com/${{ github.repository }}/blob/${{ github.event.pull_request.head.ref }}/$ARTEFACT)"
+            --body "🔎 Automated review artefact committed to this PR branch: \`$ARTEFACT\`"

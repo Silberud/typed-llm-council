@@ -14,6 +14,9 @@ Behaviour:
 Environment:
     ANTHROPIC_API_KEY     required unless --dry-run
     PR_REVIEW_MODEL       optional; defaults to claude-opus-4-7
+    PR_REVIEW_EXISTING_REVIEWS_DIR
+                         optional; directory used only to count prior
+                         docs/reviews/<PR>-iter<K>.md artefacts
 """
 from __future__ import annotations
 
@@ -61,12 +64,15 @@ def fetch_pr(pr_number: int) -> tuple[dict, str, bool]:
 
 def next_iteration(pr_number: int) -> int:
     """K = 1 + count of existing reviews for this PR."""
-    if not REVIEWS_DIR.exists():
+    reviews_dir = pathlib.Path(
+        os.environ.get("PR_REVIEW_EXISTING_REVIEWS_DIR", str(REVIEWS_DIR))
+    )
+    if not reviews_dir.exists():
         return 1
     pattern = re.compile(rf"^{pr_number}-iter(\d+)\.md$")
     existing = [
         int(m.group(1))
-        for f in REVIEWS_DIR.iterdir()
+        for f in reviews_dir.iterdir()
         if (m := pattern.match(f.name))
     ]
     return (max(existing) + 1) if existing else 1
