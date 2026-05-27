@@ -1,5 +1,8 @@
 # PR Review Bot (v0) Implementation Plan
 
+> **⚠️ DEPRECATED — historical record only.** This plan was implemented as PR #15 but the resulting CI-based bot was later **removed** in PR #27 in favour of a Claude Code slash command (`.claude/commands/review-pr.md`). See [`2026-05-27-slash-command-pivot.md`](2026-05-27-slash-command-pivot.md) for the architecture that replaced it. The Python bot and its GitHub Actions workflow no longer exist in the repo.
+
+
 > **Status:** Plan stabilised after 3 consecutive zero-finding rounds (R6, R7, R8) with perspectives spanning security/PI defense, failure modes, fork safety, and convention fit.
 
 **Goal:** A GitHub-Actions reviewer bot that runs on every PR to this repo. Reads the PR diff + body, produces a structured forensic review via a single LLM call (Claude), commits the review as a file to the PR branch, and posts a comment with the link.

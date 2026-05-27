@@ -101,7 +101,7 @@ OUT=$(mktemp)
 LOG=$(mktemp)
 trap 'rm -f "$PROMPT_FILE" "$OUT" "$LOG"' EXIT
 
-if timeout 120 codex exec \
+if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} codex exec \
       --skip-git-repo-check \
       --ephemeral \
       --color never \
@@ -128,7 +128,7 @@ cat > "$PROMPT_FILE" <<'EOF_PROMPT'
 <full brief with substitutions>
 EOF_PROMPT
 
-if timeout 120 gemini -p "$(cat "$PROMPT_FILE")" 2>&1; then
+if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} gemini -p "$(cat "$PROMPT_FILE")" 2>&1; then
   : # success — output already on stdout
 else
   echo "DROPPED: gemini error (exit $?)"
@@ -157,7 +157,7 @@ PAYLOAD=$(jq -n \
     stream: false
   }')
 
-if timeout 180 curl -s http://localhost:11434/api/chat -d "$PAYLOAD" | jq -r '.message.content' 2>&1; then
+if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+180} curl -s http://localhost:11434/api/chat -d "$PAYLOAD" | jq -r '.message.content' 2>&1; then
   :
 else
   echo "DROPPED: ollama error (exit $?)"
@@ -170,6 +170,14 @@ rm -f "$PROMPT_FILE"
 - Issue these as **three Bash tool calls in one message** so they run concurrently. Total wallclock: ~30–120s bounded by the slowest member.
 - If a member returns `DROPPED:`, the council continues with the remaining members. **Minimum 2 voters required** for a valid synthesis (looser than spec §6 Stage 2's 3-voter rule because Grok is stubbed at the v0 baseline anyway).
 - Each member's full response (including its VERDICT and reasoning) gets captured verbatim in the artefact.
+
+### Portability — `timeout` command
+
+The Bash snippets above use `${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} <cmd>` so the timeout is **opt-in via env var**:
+- On macOS by default `timeout` is not installed → variable is unset → the shell sees no timeout prefix and runs the command directly (CLIs have their own internal timeouts).
+- To enable timeouts: `export TIMEOUT_BIN=timeout` (Linux, where coreutils is standard) or `export TIMEOUT_BIN=gtimeout` (macOS after `brew install coreutils`).
+
+The `${VAR:-}` pattern emits nothing when unset; the `${VAR:+VALUE}` pattern emits `VALUE` only when set. Together they cleanly toggle the timeout prefix on or off without breaking the `if`.
 
 ---
 

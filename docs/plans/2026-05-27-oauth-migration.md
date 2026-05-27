@@ -1,5 +1,8 @@
 # OAuth Migration (subscription auth) Implementation Plan
 
+> **⚠️ DEPRECATED — historical record only.** This plan was implemented as PR #20 but the migration failed in CI (`claude -p` returned `401 Invalid bearer token` because the CLI's OAuth-exchange step requires Keychain state that fresh GitHub Actions runners don't have). The entire CI path was removed in PR #27 in favour of a Claude Code slash command that uses subagent and local CLI auth inside the operator's existing Claude Code session. See [`2026-05-27-slash-command-pivot.md`](2026-05-27-slash-command-pivot.md).
+
+
 > **Status:** Plan audit-loop stabilised after 3 consecutive zero-finding rounds.
 
 **Goal:** Migrate the PR review bot + reviewer cron from Anthropic SDK + `ANTHROPIC_API_KEY` (pay-per-token billing) to `claude` CLI subprocess + `CLAUDE_CODE_OAUTH_TOKEN` (Claude Code Pro/Max subscription billing).
