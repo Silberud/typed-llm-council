@@ -4,6 +4,24 @@
 "versions" below are *hardening-pass labels*, not released package versions).
 Each pass is a small set of commits described under its heading.
 
+## v2.3.0 — 2026-05-27
+
+**First public release** — tagged `v2.3.0` and published as a GitHub Release. No product-code behaviour change relative to the prior commits on `main`; this version cuts the tag and adds the professional-release scaffolding that makes the repo maintainable as an outside contribution surface.
+
+### Added (community-health surfaces)
+- `.github/ISSUE_TEMPLATE/{bug_report,feature_request,design_feedback}.yml` + `config.yml` — structured Issue forms; blank Issues turned off; contact links to Discussions and SECURITY.md.
+- `.github/pull_request_template.md` — codifies the plan-doc-link + quality-gates-checklist habit established by PRs #7 and #8.
+- `.github/CODEOWNERS` — auto-assigns review to `@Silberud` on every PR.
+- `.github/dependabot.yml` — weekly pip + github-actions dependency updates.
+- `CODE_OF_CONDUCT.md` — Contributor Covenant 2.1, contact `igor.silberud@gmail.com`.
+- `CITATION.cff` — machine-readable citation metadata; enables GitHub's "Cite this repository" widget.
+- `.pre-commit-config.yaml` — local ruff/yaml/toml hooks so contributors don't fail CI on lint.
+- `docs/release_process.md` — versioning policy + pre-flight checklist + cut/yank/hotfix procedures.
+- README "Project conventions" section — surfaces all of the above in one table.
+
+### Plan
+- `docs/plans/2026-05-27-professional-release-prep.md` — the audit-loop + 14-task breakdown that drove this release.
+
 ## Public launch — 2026-05-26
 
 Repo flipped from PRIVATE to PUBLIC after three Hermes Agent (GPT-5.5)

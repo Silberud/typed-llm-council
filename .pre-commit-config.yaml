@@ -1,0 +1,31 @@
+# pre-commit hooks for typed-llm-council
+# Install once:  pip install pre-commit && pre-commit install
+# Run on all files: pre-commit run --all-files
+#
+# CI runs the same ruff version (per pyproject's ruff>=0.4). The pinned
+# pre-commit ref below stays current via Dependabot's github-actions
+# / pre-commit ecosystem (pre-commit autoupdate also works).
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        # Issue forms use GitHub-specific YAML; pre-commit's yamllint is
+        # fine for syntax but allow these to be skipped if they ever
+        # contain anchors that vanilla pyyaml dislikes.
+        args: ["--allow-multiple-documents"]
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: '\.md$'   # markdown trailing whitespace is sometimes intentional (line break)
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
