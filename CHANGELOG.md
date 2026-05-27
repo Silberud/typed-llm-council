@@ -20,7 +20,6 @@ releases.
 - Docs: correct the CHANGELOG description of Issue templates landed in v2.3.0.
 - Docs/examples: force the Stage 3 structural demo to use the placeholder
   comparator so it cannot make a real Claude comparator call under local config.
-<<<<<<< HEAD
 - Tools: PR review bot (v0) — same-repo PRs trigger a structured single-LLM
   forensic review via trusted base-branch `tools/pr_review` code, committed to
   the PR branch as `docs/reviews/<PR>-iter<K>.md`. Advisory only; the maintainer
@@ -31,19 +30,11 @@ releases.
   base branch checkout, generated artefact paths are constrained, branch-name
   shell interpolation is quoted, and prompt-boundary markers are treated as
   untrusted JSON string data.
-=======
-- Tools: PR review bot (v0) — every PR triggers a structured single-LLM
-  forensic review via `tools/pr_review`, committed to the PR branch as
-  `docs/reviews/<PR>-iter<K>.md`. Advisory only; the maintainer remains the
-  merge gate. Prompt-injection defense via untrusted-content delimiters +
-  regex tripwires. v1 will swap the single-LLM call for the full multi-stage
-  council once Phases D + F land.
 - Tools: reviewer cron (v1) — every 6h, iterates open PRs, runs (or reuses)
   the v0 forensic review, and acts on the verdict: squash-merge on APPROVE,
   Claude-generated fix-up commit on MODIFY (falls through to comment-only if
   the patch doesn't apply cleanly), comment + `needs-maintainer` label on
   REJECT/NEEDS-MAINTAINER. Workflow: `.github/workflows/council-reviewer-cron.yml`.
->>>>>>> 6c08379 (feat: reviewer cron (v1) — every 6h, iterates open PRs and acts on verdicts)
 
 ## v2.3.0 — 2026-05-27
 
