@@ -110,10 +110,28 @@ def main() -> int:
         help="Print the artefact path that would be written; do not call the API.",
     )
     parser.add_argument(
+        "--verdict-only",
+        action="store_true",
+        help="Don't call the API; instead read the latest existing review file for this PR and print just its verdict token on stdout.",
+    )
+    parser.add_argument(
         "--model",
         default=os.environ.get("PR_REVIEW_MODEL", DEFAULT_MODEL),
     )
     args = parser.parse_args()
+
+    if args.verdict_only:
+        # Lazy import to avoid pulling actions.py into the hot path.
+        from .actions import find_latest_review  # noqa: PLC0415
+        from .cron import parse_verdict  # noqa: PLC0415
+
+        path = find_latest_review(args.pr, REVIEWS_DIR)
+        if not path:
+            return 0  # no review yet; empty stdout signals caller
+        verdict = parse_verdict(path)
+        if verdict:
+            print(verdict)
+        return 0
 
     # Gracefully no-op if the API key is missing — keeps the workflow green
     # on first install (before the operator sets the secret) and on any
