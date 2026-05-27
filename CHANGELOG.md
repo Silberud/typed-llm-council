@@ -12,6 +12,12 @@ releases.
 - Docs: correct the CHANGELOG description of Issue templates landed in v2.3.0.
 - Docs/examples: force the Stage 3 structural demo to use the placeholder
   comparator so it cannot make a real Claude comparator call under local config.
+- Tools: PR review bot (v0) — every PR triggers a structured single-LLM
+  forensic review via `tools/pr_review`, committed to the PR branch as
+  `docs/reviews/<PR>-iter<K>.md`. Advisory only; the maintainer remains the
+  merge gate. Prompt-injection defense via untrusted-content delimiters +
+  regex tripwires. v1 will swap the single-LLM call for the full multi-stage
+  council once Phases D + F land.
 
 ## v2.3.0 — 2026-05-27
 

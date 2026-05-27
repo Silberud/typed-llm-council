@@ -36,6 +36,20 @@ This repo follows a forensic plan-doc-then-PR convention established in PR #7. F
 
 The existing entries under `docs/plans/` are examples of the structure — see them for the level of detail expected.
 
+## Automated review
+
+Every PR to this repo triggers an automated forensic review by the [PR review bot](docs/reviews/README.md). The bot:
+
+- reads the PR diff + body
+- runs a regex prompt-injection tripwire
+- calls a single LLM (Claude Opus 4.7 in v0; full multi-stage council in v1 once Phases D + F land)
+- commits a structured review to your branch as `docs/reviews/<PR>-iter<K>.md`
+- posts a comment linking to the review
+
+The review is **advisory only**. The maintainer remains the merge gate. The bot never approves, blocks, or merges. Expect a fresh review file per push (`iter1`, `iter2`, …) so you can see how your changes shifted the verdict.
+
+If the bot's review surfaces a substantive concern, address it in your PR or argue back in a PR comment — the next iteration will read your comment as additional context.
+
 ## Tests
 
 The default suite runs cleanly without credentials:
