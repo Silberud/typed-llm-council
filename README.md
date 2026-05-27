@@ -47,8 +47,8 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 **`council <prompt>` will deliberately exit non-zero** until D/F/G land. What works end-to-end today is **Stage 3 verification with three-layer isolation**, live-smoked against real Claude + real Kimi (7–8 decomposed questions → all pass the leak filter → 7–8 verifier answers in ~2–4 min wallclock).
 
 ```
-60/60 structural tests pass
-   (16 cove-isolation + 16 leak-filter + 13 comparator + 10 adapter-smoke + 4 config/packaging + 1 demo-regression)
+64/64 structural tests pass
+   (16 cove-isolation + 16 leak-filter + 13 comparator + 10 adapter-smoke + 4 config/packaging + 4 PR-review-bot + 1 demo-regression)
  1/1 live Stage 3 integration smoke passes (real Claude + real Kimi)
  2/2 live comparator tests pass (real Claude judging synthetic answers)
 ```
@@ -140,7 +140,7 @@ python -m orchestrator.supervisor --status
 # Live ping each seat (burns trivial quota; needs the model CLIs installed)
 python -m orchestrator.supervisor --status --live
 
-# Structural tests (55 tests, no live calls)
+# Structural tests (64 tests, no live calls)
 pytest orchestrator/tests/
 
 # Stage 3 live integration smoke (real Claude + real Kimi; ~2 min)

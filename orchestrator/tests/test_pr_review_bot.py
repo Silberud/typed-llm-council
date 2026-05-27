@@ -1,6 +1,9 @@
 import json
+import subprocess
 
-from tools.pr_review.__main__ import next_iteration
+import pytest
+
+from tools.pr_review.__main__ import call_claude, next_iteration
 from tools.pr_review.prompts import build_user_message, scan_for_injection
 
 
@@ -50,6 +53,33 @@ def test_prompt_injection_scan_flags_content_boundary_markers():
     patterns = {hit["pattern"] for hit in hits}
     assert "override_directive" in patterns
     assert "content_boundary" in patterns
+
+
+def test_call_claude_failure_does_not_log_oauth_token_material(monkeypatch, capsys):
+    token = "SECRET_TOKEN_SHOULD_NOT_APPEAR_1234567890"
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", token)
+
+    def fail_run(*args, **kwargs):
+        raise subprocess.CalledProcessError(
+            1,
+            args[0],
+            output=f"stdout echoed {token[:12]}",
+            stderr=f"stderr echoed {token}",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fail_run)
+
+    with pytest.raises(SystemExit) as exc:
+        call_claude("system", "user", "default")
+
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "token configured: yes" in err
+    assert "token prefix" not in err
+    assert "token len" not in err
+    assert token not in err
+    assert token[:12] not in err
+    assert "[REDACTED_CLAUDE_CODE_OAUTH_TOKEN]" in err
 
 
 def test_next_iteration_can_count_reviews_from_pr_head_checkout(tmp_path, monkeypatch):

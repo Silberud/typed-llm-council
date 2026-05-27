@@ -79,6 +79,20 @@ def next_iteration(pr_number: int) -> int:
     return (max(existing) + 1) if existing else 1
 
 
+def _redact_auth_secrets(text: str | None) -> str:
+    """Redact configured auth material before writing subprocess output to logs."""
+    if not text:
+        return ""
+    redacted = text
+    token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
+    if token:
+        # Redact the full token and any long prefix Claude diagnostics may echo.
+        # GitHub masks exact secret values, but not arbitrary substrings/prefixes.
+        for n in range(len(token), min(len(token), 8) - 1, -1):
+            redacted = redacted.replace(token[:n], "[REDACTED_CLAUDE_CODE_OAUTH_TOKEN]")
+    return redacted
+
+
 def call_claude(system_prompt: str, user_message: str, model: str) -> str:
     """Single headless invocation of the `claude` CLI.
 
@@ -109,14 +123,15 @@ def call_claude(system_prompt: str, user_message: str, model: str) -> str:
         # to one or the other (sometimes both empty on early-exit), and the
         # CI traceback otherwise gives us no signal.
         token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
+        stderr = _redact_auth_secrets(e.stderr)
+        stdout = _redact_auth_secrets(e.stdout)
         sys.stderr.write(
             f"claude CLI failed (exit {e.returncode}).\n"
-            f"  token len: {len(token)}\n"
-            f"  token prefix: {token[:12] if token else '(none)'}\n"
+            f"  token configured: {'yes' if token else 'no'}\n"
             f"  argv: {cmd[:2]} <prompt {len(user_message)} chars> "
             f"--append-system-prompt <sys {len(system_prompt)} chars>\n"
-            f"  stderr ({len(e.stderr or '')} chars):\n{e.stderr or '(empty)'}\n"
-            f"  stdout ({len(e.stdout or '')} chars):\n{e.stdout or '(empty)'}\n"
+            f"  stderr ({len(stderr)} chars):\n{stderr or '(empty)'}\n"
+            f"  stdout ({len(stdout)} chars):\n{stdout or '(empty)'}\n"
         )
         sys.exit(2)
     return result.stdout

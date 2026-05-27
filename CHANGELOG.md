@@ -7,6 +7,9 @@ releases.
 
 ## Unreleased
 
+- Security/tooling: redact Claude Code OAuth token material from PR-review bot
+  failure diagnostics and add regression coverage so CI logs do not expose token
+  prefixes or echoed token values.
 - Packaging: include `orchestrator/config.toml` in built wheels and add a
   packaging regression test.
 - CI: add Python 3.13 to the test matrix.
