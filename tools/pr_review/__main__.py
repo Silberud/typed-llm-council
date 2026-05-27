@@ -7,16 +7,17 @@ Behaviour:
     1. Fetches PR metadata + diff via `gh api` (subprocess).
     2. Truncates diff to 50K chars if needed.
     3. Runs PI tripwire regex scan.
-    4. Calls Claude (Opus 4.7) with a hardened system prompt.
+    4. Calls Claude via the `claude` CLI (subscription-auth, OAuth token).
     5. Writes docs/reviews/<PR>-iter<K>.md (K = 1 + existing review count for this PR).
     6. Prints the artefact path on stdout.
 
 Environment:
-    ANTHROPIC_API_KEY     required unless --dry-run
-    PR_REVIEW_MODEL       optional; defaults to claude-opus-4-7
+    CLAUDE_CODE_OAUTH_TOKEN     required unless --dry-run; subscription auth.
+                                Populated in CI by `claude` + `/install-github-app`.
+    PR_REVIEW_MODEL             optional; passed to `claude --model`.
     PR_REVIEW_EXISTING_REVIEWS_DIR
-                         optional; directory used only to count prior
-                         docs/reviews/<PR>-iter<K>.md artefacts
+                                optional; directory used only to count prior
+                                docs/reviews/<PR>-iter<K>.md artefacts
 """
 from __future__ import annotations
 
@@ -83,26 +84,35 @@ def next_iteration(pr_number: int) -> int:
 
 
 def call_claude(system_prompt: str, user_message: str, model: str) -> str:
-    """Single non-streamed Anthropic Messages call. Returns the text response."""
+    """Single headless invocation of the `claude` CLI.
+
+    Auth: reads `CLAUDE_CODE_OAUTH_TOKEN` from environment (set by the workflow
+    from the repo secret). This bills against the Claude Code Pro/Max
+    subscription, not a separate API key.
+
+    Returns the text response (stdout of `claude -p`).
+    """
+    cmd = ["claude", "-p", "--append-system-prompt", system_prompt]
+    if model and model != "default":
+        cmd.extend(["--model", model])
     try:
-        import anthropic  # noqa: PLC0415
-    except ImportError:
+        result = subprocess.run(  # noqa: S603
+            cmd,
+            input=user_message,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except FileNotFoundError:
         sys.stderr.write(
-            "anthropic package not installed. `pip install anthropic`.\n"
+            "claude CLI not installed. "
+            "Install with `npm install -g @anthropic-ai/claude-code`.\n"
         )
         sys.exit(2)
-
-    client = anthropic.Anthropic()  # picks up ANTHROPIC_API_KEY from env
-    response = client.messages.create(
-        model=model,
-        max_tokens=8000,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
-    # Concatenate any text blocks in the response.
-    return "".join(
-        block.text for block in response.content if block.type == "text"
-    )
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(f"claude CLI failed (exit {e.returncode}):\n{e.stderr}\n")
+        sys.exit(2)
+    return result.stdout
 
 
 def enforce_truncated_diff_verdict(review_md: str, diff_truncated: bool) -> str:
@@ -161,13 +171,14 @@ def main() -> int:
             print(verdict)
         return 0
 
-    # Gracefully no-op if the API key is missing — keeps the workflow green
-    # on first install (before the operator sets the secret) and on any
-    # ad-hoc run where the key isn't in the environment.
-    if not args.dry_run and not os.environ.get("ANTHROPIC_API_KEY"):
+    # Gracefully no-op if the OAuth token is missing — keeps the workflow
+    # green on first install (before the operator runs `claude` then
+    # `/install-github-app` which populates the secret) and on any ad-hoc run
+    # where the token isn't in the environment.
+    if not args.dry_run and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         sys.stderr.write(
-            "ANTHROPIC_API_KEY not set — skipping review. "
-            "Set the repo secret to enable the bot.\n"
+            "CLAUDE_CODE_OAUTH_TOKEN not set — skipping review. "
+            "Run `claude` then `/install-github-app` to populate the repo secret.\n"
         )
         return 0
 

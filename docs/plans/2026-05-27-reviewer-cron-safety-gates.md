@@ -25,8 +25,9 @@ additional patchable release-blocking finding displaced them.
 
 1. Add a `pr_checks_green()` gate before reviewer-cron auto-merge. It fails closed on absent checks, pending/failing checks, invalid JSON, or `gh` failure.
 2. Require `NEEDS-MAINTAINER` in the reviewer system prompt when the PR diff is truncated, and machine-enforce that verdict before writing the review artefact.
-3. Update `docs/reviews/README.md` so the public safety model distinguishes the advisory per-PR bot from the scheduled actor cron.
-4. Add regression tests for the merge gate, truncated-diff prompt invariant, and truncated-diff verdict override.
+3. Pass Claude CLI prompts through stdin rather than argv in both review and fix-up generation, preserving the repo's existing argv-prompt-visibility standard.
+4. Update `docs/reviews/README.md` so the public safety model distinguishes the advisory per-PR bot from the scheduled actor cron.
+5. Add regression tests for the merge gate, truncated-diff prompt invariant, and truncated-diff verdict override.
 
 ## Verification targets
 

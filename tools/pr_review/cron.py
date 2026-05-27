@@ -79,8 +79,8 @@ def extract_required_actions(review_path: pathlib.Path) -> str:
 
 def run_review_for_pr(pr_number: int) -> pathlib.Path | None:
     """Invoke the v0 reviewer for this PR; return the new artefact path or None."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        log.info("PR #%d: ANTHROPIC_API_KEY unset; skipping", pr_number)
+    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        log.info("PR #%d: CLAUDE_CODE_OAUTH_TOKEN unset; skipping", pr_number)
         return None
     try:
         res = subprocess.run(
@@ -100,19 +100,15 @@ def run_review_for_pr(pr_number: int) -> pathlib.Path | None:
 
 
 def claude_generate_patch(review_path: pathlib.Path, pr_number: int) -> str:
-    """Ask Claude for a unified-diff patch addressing this review's required actions.
+    """Ask Claude (via the `claude` CLI) for a unified-diff patch addressing
+    this review's required actions.
 
-    Returns empty string if no key, no required actions, or generation fails.
+    Returns empty string if no token, no required actions, or generation fails.
     """
     required = extract_required_actions(review_path)
     if not required or required.lower() == "none":
         return ""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return ""
-
-    try:
-        import anthropic  # noqa: PLC0415
-    except ImportError:
+    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         return ""
 
     # Fetch the current PR diff so Claude has context for the patch.
@@ -132,7 +128,6 @@ def claude_generate_patch(review_path: pathlib.Path, pr_number: int) -> str:
     except subprocess.CalledProcessError:
         return ""
 
-    client = anthropic.Anthropic()
     system = (
         "You generate unified-diff patches. Output ONLY a valid unified diff "
         "(no prose, no fences, no markdown). The diff must apply cleanly with "
@@ -154,15 +149,17 @@ Current PR diff (the changes this PR introduces — your patch will be applied O
 
 Produce a minimal unified diff that addresses the Required Actions. Output the diff only, no surrounding text. If unsafe, output nothing.
 """
+
     try:
-        resp = client.messages.create(
-            model=DEFAULT_MODEL,
-            max_tokens=4000,
-            system=system,
-            messages=[{"role": "user", "content": user}],
+        result = subprocess.run(  # noqa: S603
+            ["claude", "-p", "--append-system-prompt", system],
+            input=user,
+            capture_output=True,
+            text=True,
+            check=True,
         )
-        patch = "".join(b.text for b in resp.content if b.type == "text")
-    except Exception as e:  # noqa: BLE001
+        patch = result.stdout
+    except (FileNotFoundError, subprocess.CalledProcessError) as e:
         log.warning("PR #%d: claude patch generation failed: %s", pr_number, e)
         return ""
 
@@ -276,8 +273,8 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not args.dry_run and not os.environ.get("ANTHROPIC_API_KEY"):
-        log.warning("ANTHROPIC_API_KEY not set — running in degraded mode (no fresh reviews, no patches; can still parse existing reviews and act).")
+    if not args.dry_run and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        log.warning("CLAUDE_CODE_OAUTH_TOKEN not set — running in degraded mode (no fresh reviews, no patches; can still parse existing reviews and act).")
 
     try:
         prs = list_open_prs()

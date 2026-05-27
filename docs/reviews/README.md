@@ -44,19 +44,21 @@ If a contributor submits a PR with what the bot judges to be a genuine prompt-in
 
 ## Local validation
 
-The bot is runnable locally for testing prompt changes:
+The bot is runnable locally for testing prompt changes. It uses the `claude` CLI from your Claude Code Pro/Max subscription — no separate API key.
 
 ```bash
-# Set up
-export ANTHROPIC_API_KEY=sk-...
-pip install anthropic
+# Pre-req: `claude` CLI installed and authenticated locally
+#   npm install -g @anthropic-ai/claude-code
+#   claude   # then `/login` once if not already authenticated
 
-# Run against any historical PR
+# Run against any historical PR (consumes subscription quota)
 python -m tools.pr_review --pr 12
 
-# Or just check what it WOULD do without making an API call
+# Or just check what it WOULD do without making any model call
 python -m tools.pr_review --pr 12 --dry-run
 ```
+
+To run from a clean environment that mirrors the CI workflow, set `CLAUDE_CODE_OAUTH_TOKEN` explicitly (obtain it from the same auth that powers your local `claude` CLI).
 
 ## Maintenance
 
