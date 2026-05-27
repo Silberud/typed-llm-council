@@ -26,7 +26,7 @@ Verified by `tests/test_cove_isolation.py` (16 cases, 50-fixture Hypothesis fuzz
 
 ---
 
-## Try it now — `/review-pr` slash command
+## Try it now — `/council` slash command
 
 The most concrete artefact this repo currently ships is **a working multi-vendor council review you can run locally**:
 
@@ -34,10 +34,10 @@ The most concrete artefact this repo currently ships is **a working multi-vendor
 cd ~/llm-council-public
 claude
 # inside Claude Code, type:
-/review-pr 24
+/council 24
 ```
 
-This invokes [`.claude/commands/review-pr.md`](.claude/commands/review-pr.md), which:
+This invokes [`.claude/commands/council.md`](.claude/commands/council.md), which:
 
 1. Fetches the PR diff + metadata via `gh`.
 2. Runs a deterministic prompt-injection pre-scan.
@@ -64,7 +64,7 @@ See [`docs/council_quickstart.md`](docs/council_quickstart.md) for installing an
 
 ## Status — what's actually in this release
 
-**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1 + E.2 opt-in) of a 9-phase plan, *plus* the working `/review-pr` slash command** (v0 of the multi-vendor council — majority vote, not yet AceMAD-weighted). Be explicit about that.
+**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1 + E.2 opt-in) of a 9-phase plan, *plus* the working `/council` slash command** (v0 of the multi-vendor council — majority vote, not yet AceMAD-weighted). Be explicit about that.
 
 | Phase | What | Status |
 |---|---|---|

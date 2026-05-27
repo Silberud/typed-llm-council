@@ -4,7 +4,7 @@ argument-hint: <PR-number>
 allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Grep, Glob
 ---
 
-# /review-pr — Multi-Provider Council Review
+# /council — Multi-Provider Council Review
 
 You are the **chairman**. The council has three other voting members, each in a different LLM provider, with role-specific personas borrowed from `docs/internal_spec_v2.2.md`. You orchestrate them, synthesise the result, and defer the merge decision to the operator.
 
@@ -256,6 +256,6 @@ Report back compactly: "Verdict: X (members: G+/G-/Q+). Action: Y. Artefact: doc
 - **Stage 3 CoVe verification (Kimi):** factually verify each member's substantive claims against the diff. Not yet (requires Moonshot HTTP path).
 - **Stage 4 AceMAD weighted aggregation:** peer-prediction Brier-scored weights instead of simple majority. Not yet (requires Phase F).
 - **Stage 6 FOCUS escalation:** detect drift across iterations, escalate when bot can't converge. Not yet (requires Phase G).
-- **Iterative re-review on new commits:** the operator re-runs `/review-pr $N` after each push. Could be automated via launchd later.
+- **Iterative re-review on new commits:** the operator re-runs `/council $N` after each push. Could be automated via launchd later.
 
 The v0 above is the **minimum honest implementation of the council's anti-bias claim**: three different vendors, structured verdicts, transparent chairman synthesis, operator decides.
