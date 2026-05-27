@@ -81,7 +81,7 @@ If you blow a vendor's quota, that member returns `DROPPED:` and the council con
 - **No CoVe verification step.** Kimi (the verifier seat) is in the architecture but not yet wired into `/council`. Deferred to v1.
 - **No D3 advocate/juror role rotation.** All three members are pure jurors in v0. Deferred to v1.
 - **No FOCUS drift escalation.** If the council can't converge across iterations, there's no automatic escalation. Deferred to v1 (Phase G).
-- **Manual invocation only.** No automatic re-review on new commits, no scheduled cron. The operator types `/council <N>` when they want a review.
+- **Manual invocation or `/loop`-driven cron.** A truly unattended 24/7 cron (survives terminal close) would need a launchd job; that's future work.
 - **Grok (Skeptic) still stubbed.** See CG-001 in [`docs/operator_setup.md`](operator_setup.md). When xAI opens an OAuth path on X Premium+, Grok joins the council and the outcome space goes from 9 back to 12 per spec.
 
 ## Reading the artefact

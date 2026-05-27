@@ -1,6 +1,6 @@
 ---
-description: "Multi-provider council review of an open PR. Spawns 3 parallel external CLI calls (Codex/GPT as Architect, Gemini as Researcher, local Ollama-Qwen as Analyst), synthesises their verdicts as chairman (you, Claude), writes a structured review artefact, then asks the operator whether to merge."
-argument-hint: <PR-number>
+description: "Multi-provider council review of one or all open PRs. With no argument: enumerate every open PR, skip those already reviewed at their current HEAD, run the council on each. With a PR number: review just that one. Spawns 3 parallel external CLI calls per PR (Codex/GPT as Architect, Gemini as Researcher, local Ollama-Qwen as Analyst), synthesises verdicts as chairman, writes structured artefacts, posts PR comments, asks the operator before merging."
+argument-hint: "[<PR-number>]   (omit to auto-review every open PR)"
 allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Grep, Glob
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Grep, Glob
 
 You are the **chairman**. The council has three other voting members, each in a different LLM provider, with role-specific personas borrowed from `docs/internal_spec_v2.2.md`. You orchestrate them, synthesise the result, and defer the merge decision to the operator.
 
-**This is the council's anti-bias core:** the same PR is reviewed by three *different vendors* (OpenAI / Google / Alibaba via local Ollama), not three Claude subagents. That's the point.
+**Anti-bias core:** the same PR is reviewed by three *different vendors* (OpenAI / Google / Alibaba via local Ollama), not three Claude subagents.
 
 Skipped seats:
 - **Grok (Skeptic):** stubbed (CG-001 — no OAuth path on X Premium+).
@@ -16,14 +16,53 @@ Skipped seats:
 
 ---
 
-## Stage 0 — Gather (you, deterministic)
+## Stage -1 — Self-update (you, deterministic)
 
-Run via Bash (one message, three parallel calls):
+Pull the latest version of this slash command from the public repo so each invocation runs the current prompts. The user-level symlink at `~/.claude/commands/council.md` points at `~/llm-council-public/.claude/commands/council.md`; this stage refreshes the underlying file.
 
 ```bash
-gh pr view $ARGUMENTS --json title,body,author,headRefName,headRefOid,baseRefName,additions,deletions,changedFiles
-gh pr diff $ARGUMENTS
-ls docs/reviews/${ARGUMENTS}-iter*.md 2>/dev/null | wc -l
+cd ~/llm-council-public && git fetch --quiet origin main && git pull --ff-only --quiet origin main 2>/dev/null || true
+```
+
+This is best-effort: if the pull fails (uncommitted changes, conflicts, missing repo), continue with whatever's already on disk. Do not block on it. The CURRENT invocation runs the already-loaded file; the NEXT invocation will see the updated file if a pull succeeded.
+
+---
+
+## Stage 0 — Determine target PR(s) (you, deterministic)
+
+Examine `$ARGUMENTS`:
+
+- **If `$ARGUMENTS` is a PR number** (e.g. `/council 29`): set `TARGET_PRS=[29]`. Skip to Stage 0a.
+- **If `$ARGUMENTS` is empty** (`/council` with no arg): enumerate all open PRs in the operator's CURRENT git repo (`gh` auto-detects from `cwd`):
+
+  ```bash
+  gh pr list --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"'
+  ```
+
+  Each line is `PR_NUMBER HEAD_SHA`. For each PR, do the skip check below. The remaining PRs form `TARGET_PRS`.
+
+### Skip check (only when iterating)
+
+For each candidate PR, find its latest review artefact:
+
+```bash
+ls docs/reviews/${PR_NUMBER}-iter*.md 2>/dev/null | sort -V | tail -1
+```
+
+If that file exists AND contains the current `HEAD_SHA[:8]` substring, the PR has already been reviewed at this commit — **skip it**. Otherwise, include in `TARGET_PRS`.
+
+If `TARGET_PRS` is empty after filtering: report "0 PRs need review; all open PRs are already at a head reviewed by the council" and stop.
+
+---
+
+## Stage 0a — Gather per PR
+
+For each PR in `TARGET_PRS` (sequential, one at a time — do NOT parallelise across PRs):
+
+```bash
+gh pr view $PR_NUMBER --json title,body,author,headRefName,headRefOid,baseRefName,additions,deletions,changedFiles
+gh pr diff $PR_NUMBER
+ls docs/reviews/${PR_NUMBER}-iter*.md 2>/dev/null | wc -l
 ```
 
 The third command's output is `N` (existing review count); this iteration is `K = N + 1`. Truncate the diff to **50,000 characters** if larger; note truncation in the artefact.
@@ -201,7 +240,7 @@ You also write a **chairman synthesis paragraph** explaining your reasoning for 
 
 ## Stage 4 — Write artefact
 
-Path: `docs/reviews/$ARGUMENTS-iter<K>.md`. Verify the path matches `docs/reviews/[0-9]+-iter[0-9]+\.md` before writing.
+Path: `docs/reviews/<PR_NUMBER>-iter<K>.md` (where `<PR_NUMBER>` is the current PR being processed in the loop). Verify the path matches `docs/reviews/[0-9]+-iter[0-9]+\.md` before writing.
 
 Required sections (full schema in `docs/reviews/README.md`):
 - **T — Triage:** files, lines, author trust, invariant files touched
@@ -220,9 +259,18 @@ Required sections (full schema in `docs/reviews/README.md`):
 
 ---
 
-## Stage 5 — Ask the operator
+## Stage 5 — Ask the operator (single-PR mode only)
 
-Use `AskUserQuestion`. Header chip = the verdict (e.g. "APPROVE", "MODIFY"). Options depend on verdict:
+**If invoked with a specific PR number** (`/council 29`): use `AskUserQuestion` to ask the operator what to do next. Header chip = the verdict.
+
+**If invoked with no args** (batch mode): **do NOT ask per-PR.** Instead:
+- For each PR: commit + push the review artefact, comment on the PR with the verdict + link, and label appropriately (`needs-maintainer` on REJECT/MODIFY-HIGH-confidence, none on APPROVE).
+- Do NOT auto-merge in batch mode. Even on APPROVE, merging stays manual — the operator can run `gh pr merge <N> --squash --delete-branch` after reading the artefacts.
+- After all PRs are processed, print a single summary line: "Reviewed N PRs. Verdicts: A APPROVE, M MODIFY, R REJECT. See docs/reviews/."
+
+This keeps batch mode unattended-safe (no `AskUserQuestion` prompts that would hang a `/loop`-style cron).
+
+### Per-verdict options for single-PR mode
 
 **APPROVE / APPROVE-WITH-MINOR-MODIFY:**
 - "Merge it now (squash + delete branch)"
@@ -239,14 +287,31 @@ Use `AskUserQuestion`. Header chip = the verdict (e.g. "APPROVE", "MODIFY"). Opt
 
 ---
 
-## Stage 6 — Execute the operator's choice
+## Stage 6 — Execute the operator's choice (single-PR) or default actions (batch)
 
-- **Merge:** `gh pr merge $ARGUMENTS --squash --delete-branch`
-- **Commit + push review:** stage the artefact, commit with `[skip ci]`, push to the PR's head branch (or main if reviewing main).
-- **Comment:** `gh pr comment $ARGUMENTS --body "🔎 Council review (multi-vendor): docs/reviews/$ARGUMENTS-iter<K>.md. Verdict: <X>. <one-line>"`
-- **Label:** `gh pr edit $ARGUMENTS --add-label needs-maintainer`
+- **Merge:** `gh pr merge <PR_NUMBER> --squash --delete-branch`
+- **Commit + push review:** stage `docs/reviews/<PR_NUMBER>-iter<K>.md`, commit with `[skip ci]`, push to `main`.
+- **Comment:** `gh pr comment <PR_NUMBER> --body "🔎 Council review (multi-vendor): docs/reviews/<PR_NUMBER>-iter<K>.md. Verdict: <X>. <one-line>"`
+- **Label (needs-maintainer):** `gh pr edit <PR_NUMBER> --add-label needs-maintainer`
 
-Report back compactly: "Verdict: X (members: G+/G-/Q+). Action: Y. Artefact: docs/reviews/$ARGUMENTS-iterK.md."
+Single-PR report: "Verdict: X (members: G+/G-/Q+). Action: Y. Artefact: docs/reviews/<PR>-iterK.md."
+Batch report: "Reviewed N PRs. Verdicts: A APPROVE, M MODIFY, R REJECT. See docs/reviews/."
+
+---
+
+## Running the council as a cron
+
+The natural way to run this every N hours is the built-in `/loop` skill:
+
+```
+/loop 6h /council
+```
+
+Started inside a Claude Code session in your target repo. Every 6 hours it auto-pulls the latest slash command (Stage -1), enumerates open PRs, skips ones already reviewed at HEAD, and runs the council on the rest. Closes the loop without operator intervention.
+
+Caveats:
+- `/loop` requires the Claude Code session to stay open. If you close the terminal, the loop dies. For true unattended 24/7 you'd need a launchd job calling `claude -p "/council"` headlessly — that's a future enhancement.
+- The cron pulls + reviews; it does NOT merge. Merges stay manual (operator decision).
 
 ---
 
@@ -256,6 +321,6 @@ Report back compactly: "Verdict: X (members: G+/G-/Q+). Action: Y. Artefact: doc
 - **Stage 3 CoVe verification (Kimi):** factually verify each member's substantive claims against the diff. Not yet (requires Moonshot HTTP path).
 - **Stage 4 AceMAD weighted aggregation:** peer-prediction Brier-scored weights instead of simple majority. Not yet (requires Phase F).
 - **Stage 6 FOCUS escalation:** detect drift across iterations, escalate when bot can't converge. Not yet (requires Phase G).
-- **Iterative re-review on new commits:** the operator re-runs `/council $N` after each push. Could be automated via launchd later.
+- **Headless launchd cron:** survives session close, doesn't depend on `/loop`. Future.
 
 The v0 above is the **minimum honest implementation of the council's anti-bias claim**: three different vendors, structured verdicts, transparent chairman synthesis, operator decides.

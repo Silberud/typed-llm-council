@@ -7,6 +7,10 @@ releases.
 
 ## Unreleased
 
+- **`/council` (no args) auto-reviews every open PR.** Previously required a PR number; now empty-arg enumerates open PRs in the cwd's repo, skips ones whose latest review already references the current HEAD SHA, and runs the council on the rest sequentially. Specific-PR mode (`/council <N>`) still works.
+- **Self-update built into the slash command.** Stage -1 runs `git pull --ff-only origin main` in `~/llm-council-public/` before any review work, so each invocation refreshes its own logic from main. The symlink at `~/.claude/commands/council.md` is the pointer; the pull keeps the target file current.
+- **Batch mode is unattended-safe.** When invoked without an arg (typical cron use), the slash command does NOT call `AskUserQuestion` — it writes the artefact, posts a PR comment, labels `needs-maintainer` where appropriate, and moves on. Merges remain manual regardless.
+- **Cron wiring documented.** Inside Claude Code in your repo: `/loop 6h /council`. Every 6 hours: auto-pull → enumerate → skip-known → review the rest.
 - Packaging: include `orchestrator/config.toml` in built wheels and add a
   packaging regression test.
 - CI: add Python 3.13 to the test matrix.
