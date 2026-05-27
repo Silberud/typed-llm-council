@@ -39,12 +39,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install reviewer deps
-        run: pip install anthropic
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install the Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
 
       - name: Run reviewer cron
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: python -m tools.pr_review.cron

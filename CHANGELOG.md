@@ -35,6 +35,11 @@ releases.
   Claude-generated fix-up commit on MODIFY (falls through to comment-only if
   the patch doesn't apply cleanly), comment + `needs-maintainer` label on
   REJECT/NEEDS-MAINTAINER. Workflow: `.github/workflows/council-reviewer-cron.yml`.
+- Auth migration: PR review bot + reviewer cron switched from Anthropic SDK +
+  `ANTHROPIC_API_KEY` to `claude` CLI + `CLAUDE_CODE_OAUTH_TOKEN`. Calls now
+  bill against the Claude Code Pro/Max subscription instead of pay-per-token.
+  Operator one-time setup: `claude` then `/install-github-app` populates the
+  repo secret. No more separate API key to manage.
 
 ## v2.3.0 — 2026-05-27
 
