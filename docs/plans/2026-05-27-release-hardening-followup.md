@@ -2,6 +2,8 @@
 
 > **Status:** Plan audit-loop stabilised after three consecutive no-change rounds (rounds 4, 5, 6). Earlier rounds added packaging, trust-boundary regression, release-manager, CI/tooling, first-time-contributor, and stale-doc perspectives.
 
+> **2026-05-27 scheduled-audit extension:** After PR #15 landed the PR-review bot, a second plan loop stabilised after three consecutive no-change rounds (rounds 7, 8, 9). The stable additional findings were `PR_REVIEW_RUNS_PR_CODE_WITH_SECRETS`, `PR_REVIEW_PROMPT_BOUNDARY_BREAKOUT`, `PR_REVIEW_BRANCH_REF_SHELL_INTERPOLATION`, `PR_REVIEW_DOCS_OVERCLAIM`, and `PR_REVIEW_BOT_UNTESTED`.
+
 **Goal:** Convert the current post-v2.3.0 forensic review into a focused hardening PR that improves release/install reliability, protects public no-real-model-call claims with tests, and aligns contributor-facing docs/config with the current implementation.
 
 **Architecture:** Small code/test/docs/tooling change. No product behaviour change except packaging the default `orchestrator/config.toml` into wheels and expanding CI coverage.
@@ -57,6 +59,9 @@
 7. Narrow the leak-filter module docstring to match current implementation.
 8. Update CHANGELOG Unreleased.
 9. Run quality gates and execution-audit loops until stable.
+10. Harden the PR review workflow so generated reviews are produced by trusted base-branch code and only copied into the PR branch.
+11. JSON-encode untrusted PR content before it is sent to the reviewer model and add regression tests for delimiter/boundary injection.
+12. Align PR-review docs with v0 behavior: comments are maintainer context, the bot does not read them, and CI—not the review bot—runs tests.
 
 ---
 

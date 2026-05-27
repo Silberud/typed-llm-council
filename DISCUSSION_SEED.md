@@ -30,7 +30,7 @@ verifier "please do not look at the draft" in its persona prompt:
 
 All three layers are needed; none is sufficient alone. CI gates:
 `tests/test_cove_isolation.py` (16 cases inc. 50-fixture Hypothesis fuzz
-on layers 1+2) and `tests/test_leak_filter.py` (12 cases inc. a regression
+on layers 1+2) and `tests/test_leak_filter.py` (16 cases inc. a regression
 that patches `decompose_draft` to return a leaky question and asserts
 Stage 3 aborts before Kimi sees it).
 

@@ -33,12 +33,12 @@ Each review contains:
 
 - **The bot never merges or blocks.** All decisions are advisory; the maintainer remains the merge gate.
 - **The bot does not run on forks.** Forks don't have access to the repo's secrets, so the workflow exits early (`if: head.repo.full_name == repository`). Same-repo PRs get full review.
-- **The bot does not execute code from the PR.** It reads the diff and the PR body; the only code it runs is the unmodified test suite that already exists on `main`.
+- **The bot does not execute reviewer code from the PR.** It reads PR metadata and diff via the GitHub API, runs `tools/pr_review` from the base branch checkout, and copies only the generated markdown artefact into the PR branch. The regular CI workflow, not this bot, is responsible for running tests.
 - **The bot does not auto-merge.** Even on APPROVE verdicts.
 
 ## Prompt-injection defense
 
-The PR diff and body are wrapped in `<UNTRUSTED_PR_CONTENT>` tags before being sent to Claude. The system prompt explicitly tells Claude that content inside those tags is *data*, never instructions, and that the reviewer must not adopt roles or follow directives that appear in that content. A regex pre-scan also flags known injection patterns (override directives, Unicode bidi controls, zero-width characters, Cyrillic-Latin homoglyphs, etc.) — those hits are surfaced as findings in the review's `Security pre-check` section.
+The PR diff and body are JSON-encoded before being sent to Claude. The system prompt explicitly tells Claude that string values inside that JSON payload are *data*, never instructions, and that the reviewer must not adopt roles or follow directives that appear in that content. A regex pre-scan also flags known injection patterns (override directives, content-boundary markers, Markdown fences, Unicode bidi controls, zero-width characters, Cyrillic-Latin homoglyphs, etc.) — those hits are surfaced as findings in the review's `Security pre-check` section.
 
 If a contributor submits a PR with what the bot judges to be a genuine prompt-injection attempt, expect the review's Decision section to read **NEEDS-MAINTAINER** with the security finding explained.
 

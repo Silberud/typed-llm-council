@@ -48,7 +48,7 @@ Every PR to this repo triggers an automated forensic review by the [PR review bo
 
 The review is **advisory only**. The maintainer remains the merge gate. The bot never approves, blocks, or merges. Expect a fresh review file per push (`iter1`, `iter2`, …) so you can see how your changes shifted the verdict.
 
-If the bot's review surfaces a substantive concern, address it in your PR or argue back in a PR comment — the next iteration will read your comment as additional context.
+If the bot's review surfaces a substantive concern, address it in your PR or argue back in a PR comment for the maintainer. In v0, the automated re-review reads the PR title, body, and diff; comments are human-maintainer context rather than bot input.
 
 ## Tests
 
