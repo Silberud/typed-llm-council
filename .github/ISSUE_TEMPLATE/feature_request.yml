@@ -1,0 +1,57 @@
+name: Feature / Phase proposal
+description: Propose a new feature or claim a deferred phase (C / D / F / G / H).
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For Phase C / D / F / G / H, link the relevant tracking issue (#2–#6) and the relevant section in `docs/internal_spec_v2.2.md` if the change deviates from spec.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What's the user-visible or maintainer-visible pain you're trying to fix?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Sketch the design. If a phase, identify which files in `orchestrator/` would change and which acceptance criteria from spec §11 it meets.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional — what other approaches did you weigh, and why this one?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - "New feature (no phase mapping)"
+        - "Phase C — Anonymizer service"
+        - "Phase D — Stages 0/1/2/5"
+        - "Phase F — Stage 4 AceMAD"
+        - "Phase G — Stage 6 FOCUS / DRIFTJudge"
+        - "Phase H — Telemetry + bootstrap"
+        - "Tooling / DX / CI"
+        - "Documentation only"
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec_alignment
+    attributes:
+      label: Spec alignment
+      description: If this implements/changes a phase, point to the relevant section in `docs/internal_spec_v2.2.md`. If it deviates, explain why.
+    validations:
+      required: false

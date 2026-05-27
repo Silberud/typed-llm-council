@@ -1,0 +1,16 @@
+# CODEOWNERS — auto-assigns review request to the maintainer on every PR.
+# Format: <pattern> <owner> [<more owners>…]
+# Most-specific match wins.
+
+# Default: everything goes to the maintainer.
+* @Silberud
+
+# Spec + plan docs — same maintainer, explicit so additional reviewers
+# can be added later without changing the default.
+/docs/                     @Silberud
+/docs/plans/               @Silberud
+/orchestrator/schemas/     @Silberud
+/orchestrator/adapters/    @Silberud
+/orchestrator/services/    @Silberud
+/orchestrator/stages/      @Silberud
+/.github/                  @Silberud

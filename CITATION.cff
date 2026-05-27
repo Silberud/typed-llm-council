@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+title: "Typed LLM Council"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Silberud"
+    given-names: "Igor"
+    email: "igor.silberud@gmail.com"
+    affiliation: "H5 Resources"
+repository-code: "https://github.com/Silberud/typed-llm-council"
+url: "https://github.com/Silberud/typed-llm-council"
+license: MIT
+version: "2.3.0"
+date-released: "2026-05-27"
+keywords:
+  - "llm"
+  - "multi-agent"
+  - "verification"
+  - "chain-of-verification"
+  - "cove"
+  - "peer-prediction"
+  - "mixture-of-agents"
+  - "python"
+abstract: >
+  Typed LLM Council is a multi-model deliberation orchestrator with three-layer
+  verifier isolation (schema + adapter + content), anti-sycophancy forced verdicts,
+  and structured per-stage outputs. v2.3.0 ships the adapter skeleton (Claude /
+  Gemini / GPT / Qwen / Grok-stub contributors + Kimi verifier) and a hardened
+  Stage 3 Chain-of-Verification (CoVe) verification path; the remaining phases of
+  the 9-phase deliberation protocol are documented in the spec and tracked in the
+  roadmap.
+preferred-citation:
+  type: software
+  title: "Typed LLM Council (v2.3.0): multi-model deliberation with three-layer verifier isolation"
+  authors:
+    - family-names: "Silberud"
+      given-names: "Igor"
+  year: 2026
+  url: "https://github.com/Silberud/typed-llm-council"
+  version: "2.3.0"
+  license: MIT

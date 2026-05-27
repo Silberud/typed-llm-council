@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/Silberud/typed-llm-council/discussions
+    about: For "how do I…" questions, open-ended ideas, or show-and-tell, use Discussions instead of an Issue.
+  - name: 🔐 Security disclosure
+    url: https://github.com/Silberud/typed-llm-council/blob/main/SECURITY.md
+    about: For vulnerabilities, please follow SECURITY.md (private email) rather than opening a public Issue.

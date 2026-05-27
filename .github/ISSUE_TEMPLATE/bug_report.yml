@@ -1,0 +1,63 @@
+name: Bug report
+description: Something broken or behaving differently than the docs/spec say.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please include enough detail for someone else to reproduce.
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: A clear, specific description of the bug.
+      placeholder: When I ran X, I expected Y but got Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproducer
+      description: |
+        Minimal steps to reproduce. If relevant, include the output of:
+        ```
+        python -m orchestrator.supervisor --status
+        ```
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: |
+        Python version, OS, council version (git SHA or tag), how you installed (`pip install -e ".[dev]"` or other).
+      placeholder: |
+        Python 3.12.0
+        macOS 15.4
+        commit 377e43e (or v2.3.0)
+        installed editable with [dev] extras
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: Optional — what should have happened.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched existing issues and discussions and didn't find this.
+          required: true
+        - label: I'm reporting a code/spec bug, not a third-party model-provider issue (those go to Anthropic / Google / OpenAI / Alibaba / xAI / Moonshot).
+          required: true

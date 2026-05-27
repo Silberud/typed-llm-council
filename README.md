@@ -207,6 +207,24 @@ Next phases in priority order:
 
 ---
 
+## Project conventions
+
+How the repository operates day-to-day:
+
+| File | What it covers |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Plan-then-PR workflow, load-bearing files to read first, test/live-test rules |
+| [`docs/plans/TEMPLATE.md`](docs/plans/TEMPLATE.md) | Forensic plan-doc structure (audit-evidence → tasks → success criteria) — used by every non-trivial PR |
+| [`SECURITY.md`](SECURITY.md) | Private vulnerability-disclosure policy + secret-handling expectations |
+| [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Contributor Covenant 2.1, with project-specific note on critiquing model behaviour |
+| [`CITATION.cff`](CITATION.cff) | Machine-readable citation metadata (`Cite this repository` widget on GitHub) |
+| [`docs/release_process.md`](docs/release_process.md) | Versioning policy, pre-flight checklist, release-cut commands |
+| [`CHANGELOG.md`](CHANGELOG.md) | Per-version commit-by-commit history |
+
+Issue templates (`.github/ISSUE_TEMPLATE/`) ask for the structured details bug reports / phase proposals / design-feedback responses should carry. A PR template (`.github/pull_request_template.md`) reminds contributors to link the plan doc and tick the quality gates.
+
+---
+
 ## Citations
 
 The design draws on `Self-MoA-Seq`, `D3 advocate-juror`, `CoVe`, `AceMAD`, `FOCUS`, `PoLL` — full reference list in [`docs/internal_spec_v2.2.md`](docs/internal_spec_v2.2.md) §16. Refs to long-established prior work (CoVe, PoLL, Multi-agent Debate, ChatEval, LLM-as-Judge) are well-known; refs to more recent or forward-looking work carry the spec's own provenance — see [`docs/design_notes.md`](docs/design_notes.md) for the citation note.
