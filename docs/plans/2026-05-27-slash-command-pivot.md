@@ -9,7 +9,20 @@
 - OAuth migration (v1) introduced more setup (`claude setup-token`) and `claude -p` in fresh CI runners rejected the long-lived OAuth token with `401 Invalid bearer token` because the CLI's OAuth-exchange step requires keychain state that CI doesn't have.
 - The fundamental insight: the operator already runs `claude` interactively in the authenticated session. Spawning subagents via the Agent tool from inside that session needs **no new auth at all**. CI was the wrong layer.
 
-**Architecture:** Project-level slash command at `.claude/commands/review-pr.md`. Invoked as `/review-pr <N>`. Spawns three parallel `general-purpose` (or `Explore`) subagents — Code Reviewer / Security Auditor / Convention Auditor — synthesizes their findings, writes the artefact, asks the operator (via `AskUserQuestion`) what to do.
+**Architecture:** Project-level slash command at `.claude/commands/review-pr.md`. Invoked as `/review-pr <N>`. **Spawns three parallel external-CLI calls — one per LLM vendor — via the Bash tool.** Members:
+
+- **GPT-5.5 (Architect)** via `codex exec` (ChatGPT Pro subscription auth)
+- **Gemini 3.1 Pro (Researcher)** via `gemini -p` (OAuth auth, no API key)
+- **Qwen 3.6 (Analyst)** via local Ollama HTTP (`qwen3.6:35b-a3b-coding-nvfp4`)
+
+The chairman (Claude — the operator's own `claude` session) synthesizes the three vendors' verdicts. This realises the council's anti-single-vendor-bias claim that the README has made since v2.3.0 — three different vendors voting, one chairman synthesizing.
+
+**Deferred to v1 of the slash command:**
+- Stage 2 D3 advocate/juror role rotation
+- Stage 3 CoVe verification by Kimi (non-voting verifier seat)
+- Stage 4 AceMAD peer-prediction weighted aggregation
+- Stage 6 FOCUS drift escalation
+- Grok (Skeptic) seat — still stubbed (CG-001, no OAuth path)
 
 ---
 
