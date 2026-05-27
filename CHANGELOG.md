@@ -22,8 +22,8 @@ releases.
   comparator so it cannot make a real Claude comparator call under local config.
 - **Architecture pivot — PR review is now a multi-vendor Claude Code slash command.**
   The earlier CI-based PR review bot (PRs #15, #19, #20) is removed in favour of
-  `.claude/commands/review-pr.md` — a project-level slash command the maintainer invokes
-  inside Claude Code as `/review-pr <PR-number>`. The command **spawns three parallel external-CLI calls — one per LLM vendor** — via the Bash tool:
+  `.claude/commands/council.md` — a project-level slash command the maintainer invokes
+  inside Claude Code as `/council <PR-number>`. The command **spawns three parallel external-CLI calls — one per LLM vendor** — via the Bash tool:
   GPT-5.5 via `codex exec` (Architect), Gemini 3.1 via `gemini -p` (Researcher),
   Qwen 3.6 via local Ollama (Analyst); chairman = Claude (the operator's
   `claude` session). The chairman synthesises a verdict, writes the artefact to

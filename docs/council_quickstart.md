@@ -1,6 +1,6 @@
 # Council Quickstart
 
-How to run a real multi-vendor PR review with [`/review-pr`](../.claude/commands/review-pr.md) in under 5 minutes (assuming you already have the prerequisite CLIs installed and authenticated).
+How to run a real multi-vendor PR review with [`/council`](../.claude/commands/council.md) in under 5 minutes (assuming you already have the prerequisite CLIs installed and authenticated).
 
 ## What you'll get
 
@@ -38,7 +38,7 @@ export TIMEOUT_BIN=gtimeout # enable timeouts in the slash command
 cd ~/llm-council-public        # any same-repo PR works
 claude                         # opens Claude Code session
 # inside:
-/review-pr 24                  # replace 24 with any open PR number
+/council 24                  # replace 24 with any open PR number
 ```
 
 What happens (≈2 minutes wallclock):
@@ -56,7 +56,7 @@ Each member can return `DROPPED:` if its CLI errors or times out. The council co
 
 ## Anti-bias claim, mechanically
 
-The repo's central thesis is that **multi-vendor deliberation breaks single-vendor bias** that any individual model would have inherited from its training corpus and RLHF preferences. The `/review-pr` slash command implements this concretely:
+The repo's central thesis is that **multi-vendor deliberation breaks single-vendor bias** that any individual model would have inherited from its training corpus and RLHF preferences. The `/council` slash command implements this concretely:
 
 - Each member runs in a **different vendor's process** (separate provider, separate model weights, separate alignment training).
 - Each member gets the **same prompt** — convergence across vendors is signal; divergence is also signal.
@@ -78,10 +78,10 @@ If you blow a vendor's quota, that member returns `DROPPED:` and the council con
 ## Limitations (v0)
 
 - **Majority vote, not AceMAD-weighted.** When Phase F (Stage 4 AceMAD aggregation) ships, the slash command will swap to peer-prediction-weighted Brier-scored verdicts. For now: simple count with conservative tie-breaking.
-- **No CoVe verification step.** Kimi (the verifier seat) is in the architecture but not yet wired into `/review-pr`. Deferred to v1.
+- **No CoVe verification step.** Kimi (the verifier seat) is in the architecture but not yet wired into `/council`. Deferred to v1.
 - **No D3 advocate/juror role rotation.** All three members are pure jurors in v0. Deferred to v1.
 - **No FOCUS drift escalation.** If the council can't converge across iterations, there's no automatic escalation. Deferred to v1 (Phase G).
-- **Manual invocation only.** No automatic re-review on new commits, no scheduled cron. The operator types `/review-pr <N>` when they want a review.
+- **Manual invocation only.** No automatic re-review on new commits, no scheduled cron. The operator types `/council <N>` when they want a review.
 - **Grok (Skeptic) still stubbed.** See CG-001 in [`docs/operator_setup.md`](operator_setup.md). When xAI opens an OAuth path on X Premium+, Grok joins the council and the outcome space goes from 9 back to 12 per spec.
 
 ## Reading the artefact
@@ -101,7 +101,7 @@ Reviews are **advisory** — the maintainer makes every merge decision.
 
 ## Customising the prompt
 
-The slash command file ([`.claude/commands/review-pr.md`](../.claude/commands/review-pr.md)) is plain markdown with YAML frontmatter. Persona hints per member are inline. To adjust:
+The slash command file ([`.claude/commands/council.md`](../.claude/commands/council.md)) is plain markdown with YAML frontmatter. Persona hints per member are inline. To adjust:
 
 1. Edit the file (e.g. tighten the Architect's persona, change the verdict format).
 2. Open a PR with the change.
