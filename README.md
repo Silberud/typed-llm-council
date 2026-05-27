@@ -50,7 +50,7 @@ This invokes [`.claude/commands/review-pr.md`](.claude/commands/review-pr.md), w
 5. Writes a structured artefact to `docs/reviews/<PR>-iter<K>.md`.
 6. Asks the operator what to do next (`AskUserQuestion`).
 
-**No API keys, no OAuth tokens, no GitHub Actions secrets, no per-token billing** — runs entirely through your already-authenticated local CLIs.
+**No pasted API keys, no GitHub Actions secrets, no per-token API billing path in this command** — it runs through your already-authenticated local CLIs, so provider authentication stays in those tools' normal credential stores.
 
 ### Real example — the council reviewing PR #24
 
@@ -176,7 +176,7 @@ python -m orchestrator.supervisor --status
 # Live ping each seat (burns trivial quota; needs the model CLIs installed)
 python -m orchestrator.supervisor --status --live
 
-# Structural tests (63 tests, no live calls)
+# Structural tests (default suite, no live calls)
 pytest orchestrator/tests/
 
 # Stage 3 live integration smoke (real Claude + real Kimi; ~2 min)
