@@ -140,7 +140,7 @@ python -m orchestrator.supervisor --status
 # Live ping each seat (burns trivial quota; needs the model CLIs installed)
 python -m orchestrator.supervisor --status --live
 
-# Structural tests (24 cases, no live calls, runs in ~0.3s)
+# Structural tests (55 tests, no live calls)
 pytest orchestrator/tests/
 
 # Stage 3 live integration smoke (real Claude + real Kimi; ~2 min)

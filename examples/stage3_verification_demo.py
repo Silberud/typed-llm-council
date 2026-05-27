@@ -1,9 +1,10 @@
 """Structural demo of the Phase E Stage 3 CoVe verifier pipeline.
 
 This runs the orchestrator's `stage3_cove_verify` function end-to-end with:
-  - a MOCK decomposer (so no Claude call is made)
+  - a MOCK decomposer (so no Claude decomposition call is made)
   - a MOCK Kimi verifier (so no Moonshot call is made)
   - the REAL `services/leak_filter.py` between them
+  - the PLACEHOLDER comparator forced on, regardless of local config
 
 It exists so a visitor can see the pipeline shape — including the
 three-layer isolation enforcement — without spending any model quota.
@@ -53,7 +54,8 @@ MOCK_QUESTIONS = [
     "Is PEP 698 the @override decorator?",
 ]
 
-# What the verifier would normally return. Three SUPPORT, two synthetic.
+# What the verifier would normally return. These are high-confidence canned
+# answers; with the forced placeholder comparator they count as agreements.
 MOCK_ANSWERS = [
     "Yes, Python 3.12 was released on 3 October 2023.",
     "Yes, Python 3.12 introduced PEP 695.",
@@ -115,10 +117,15 @@ async def main() -> int:
     print("Running stage3_cove_verify (real leak filter; mock decomposer + Kimi)…")
     print("-" * 70)
 
-    # Patch decompose_draft so it returns our canned list instead of calling Claude.
+    # Patch decompose_draft so it returns our canned list instead of calling Claude,
+    # and force the placeholder comparator so a local config with
+    # comparator_mode = "real" cannot trigger a real Claude comparator call.
     with patch(
         "orchestrator.stages.stage3_verification.decompose_draft",
         AsyncMock(return_value=MOCK_QUESTIONS),
+    ), patch(
+        "orchestrator.stages.stage3_verification._comparator_mode_from_config",
+        return_value="placeholder",
     ):
         result = await stage3_cove_verify(
             prompt=OPERATOR_PROMPT,
