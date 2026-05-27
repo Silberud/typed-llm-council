@@ -105,7 +105,19 @@ def call_claude(system_prompt: str, user_message: str, model: str) -> str:
         )
         sys.exit(2)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(f"claude CLI failed (exit {e.returncode}):\n{e.stderr}\n")
+        # Surface both stderr and stdout — claude often writes diagnostic info
+        # to one or the other (sometimes both empty on early-exit), and the
+        # CI traceback otherwise gives us no signal.
+        token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
+        sys.stderr.write(
+            f"claude CLI failed (exit {e.returncode}).\n"
+            f"  token len: {len(token)}\n"
+            f"  token prefix: {token[:12] if token else '(none)'}\n"
+            f"  argv: {cmd[:2]} <prompt {len(user_message)} chars> "
+            f"--append-system-prompt <sys {len(system_prompt)} chars>\n"
+            f"  stderr ({len(e.stderr or '')} chars):\n{e.stderr or '(empty)'}\n"
+            f"  stdout ({len(e.stdout or '')} chars):\n{e.stdout or '(empty)'}\n"
+        )
         sys.exit(2)
     return result.stdout
 
