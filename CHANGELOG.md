@@ -30,6 +30,11 @@ releases.
   base branch checkout, generated artefact paths are constrained, branch-name
   shell interpolation is quoted, and prompt-boundary markers are treated as
   untrusted JSON string data.
+- Tools: reviewer cron (v1) — every 6h, iterates open PRs, runs (or reuses)
+  the v0 forensic review, and acts on the verdict: squash-merge on APPROVE,
+  Claude-generated fix-up commit on MODIFY (falls through to comment-only if
+  the patch doesn't apply cleanly), comment + `needs-maintainer` label on
+  REJECT/NEEDS-MAINTAINER. Workflow: `.github/workflows/council-reviewer-cron.yml`.
 
 ## v2.3.0 — 2026-05-27
 
