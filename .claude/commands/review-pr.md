@@ -101,13 +101,12 @@ Bash call:
 
 ```bash
 PROMPT_FILE=$(mktemp)
-cat > "$PROMPT_FILE" <<'EOF_PROMPT'
-<full brief with substitutions>
-EOF_PROMPT
-
 OUT=$(mktemp)
 LOG=$(mktemp)
 trap 'rm -f "$PROMPT_FILE" "$OUT" "$LOG"' EXIT
+cat > "$PROMPT_FILE" <<'EOF_PROMPT'
+<full brief with substitutions>
+EOF_PROMPT
 
 if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} codex exec \
       --skip-git-repo-check \
@@ -132,6 +131,7 @@ Bash call:
 
 ```bash
 PROMPT_FILE=$(mktemp)
+trap 'rm -f "$PROMPT_FILE"' EXIT
 cat > "$PROMPT_FILE" <<'EOF_PROMPT'
 <full brief with substitutions>
 EOF_PROMPT
@@ -141,7 +141,6 @@ if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} gemini -p "Review this PR using the brie
 else
   echo "DROPPED: gemini error (exit $?)"
 fi
-rm -f "$PROMPT_FILE"
 ```
 
 ### Member 3 — Qwen (Analyst)
@@ -152,11 +151,12 @@ Bash call:
 
 ```bash
 PROMPT_FILE=$(mktemp)
+PAYLOAD_FILE=$(mktemp)
+trap 'rm -f "$PROMPT_FILE" "$PAYLOAD_FILE"' EXIT
 cat > "$PROMPT_FILE" <<'EOF_PROMPT'
 <full brief with substitutions>
 EOF_PROMPT
 
-PAYLOAD_FILE=$(mktemp)
 jq -n \
   --arg model "qwen3.6:35b-a3b-coding-nvfp4" \
   --rawfile user "$PROMPT_FILE" \
@@ -167,12 +167,11 @@ jq -n \
   }' >"$PAYLOAD_FILE"
 
 set -o pipefail
-if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+180} curl -s http://localhost:11434/api/chat --data-binary @"$PAYLOAD_FILE" | jq -r '.message.content' 2>&1; then
+if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+180} curl -s --fail-with-body http://localhost:11434/api/chat --data-binary @"$PAYLOAD_FILE" | jq -e -r '.message.content' 2>&1; then
   :
 else
   echo "DROPPED: ollama error (exit $?)"
 fi
-rm -f "$PROMPT_FILE" "$PAYLOAD_FILE"
 ```
 
 ### Notes on the parallel call

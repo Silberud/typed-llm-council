@@ -30,9 +30,9 @@ releases.
   `docs/reviews/<PR>-iter<K>.md`, then asks the operator (`AskUserQuestion`)
   what to do. **First real run:** [`docs/reviews/24-iter1.md`](docs/reviews/24-iter1.md) —
   3/3 vendors caught the same bug independently; one vendor surfaced a bonus
-  finding the other two missed. No GitHub Actions, no
-  `ANTHROPIC_API_KEY`, no `CLAUDE_CODE_OAUTH_TOKEN` — runs entirely within
-  the already-authenticated `claude` session.
+  finding the other two missed. It runs from the operator's already-authenticated
+  local CLIs / local Ollama, with no project-managed API key or GitHub Actions
+  secret; provider auth and quota use remain in those tools' normal stores.
 - Removed: `.github/workflows/pr-review.yml`, `.github/workflows/council-reviewer-cron.yml`,
   `tools/pr_review/`, `orchestrator/tests/test_pr_review_bot.py`. Historical
   plan docs at `docs/plans/2026-05-27-{pr-review-bot,reviewer-cron,oauth-migration}.md`
