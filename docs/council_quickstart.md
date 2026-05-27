@@ -44,7 +44,7 @@ claude                         # opens Claude Code session
 What happens (≈2 minutes wallclock):
 
 1. Claude (you) fetches the PR via `gh`.
-2. Three parallel Bash calls fan out to `codex`, `gemini`, `ollama` — each receives the same brief (role-specific persona + diff) and returns a structured `VERDICT:` line.
+2. Three parallel Bash calls fan out to `codex`, `gemini`, `ollama` — each receives the same brief (role-specific persona + diff) through temp files/stdin and returns a structured `VERDICT:` line.
 3. Claude synthesises the three verdicts (majority vote with conservative tie-breaking).
 4. Claude writes `docs/reviews/<PR>-iter<K>.md`.
 5. Claude shows you the verdict and asks via `AskUserQuestion` what to do next (merge / commit-only / comment-and-label).
@@ -66,14 +66,14 @@ See [`docs/reviews/24-iter1.md`](reviews/24-iter1.md) for the first real demonst
 
 ## Cost
 
-Zero new $ — the slash command uses your existing subscriptions:
+Existing-provider subscriptions/quotas — the slash command does not introduce a project-managed API key or GitHub Actions secret:
 
 - `claude` → Claude Code Pro/Max subscription quota
 - `codex` → ChatGPT Pro subscription
-- `gemini` → free Gemini OAuth quota (or paid Gemini API if exhausted)
+- `gemini` → free Gemini OAuth quota (or paid Gemini API if you deliberately configure that path)
 - `ollama` → local CPU/GPU only (no cloud)
 
-If you blow a vendor's quota, that member returns `DROPPED:` and the council continues with the rest. No per-token API charges.
+If you blow a vendor's quota, that member returns `DROPPED:` and the council continues with the rest. There is no direct per-token API billing path in the slash command itself, but provider CLIs still consume their normal subscription/free/paid quota.
 
 ## Limitations (v0)
 

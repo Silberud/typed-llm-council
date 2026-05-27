@@ -21,15 +21,16 @@ In Claude Code, inside this repo, the operator types:
 
 The slash command (`.claude/commands/review-pr.md`) then:
 
-1. Fetches the PR metadata + diff via `gh`.
-2. Runs a deterministic prompt-injection pre-scan on the PR text.
-3. **Spawns three parallel subagents** via the native Agent tool — Code Reviewer, Security Auditor, Convention Auditor — each with a focused brief and Opus 4.7 as the underlying model.
-4. Synthesises the three verdicts into one structured review artefact.
-5. Writes the artefact to `docs/reviews/<PR>-iter<K>.md`.
-6. Asks the operator (`AskUserQuestion`) what to do next (merge / commit-only / comment-and-label).
-7. Executes the chosen action via `gh`.
+1. Validates the argument as a numeric PR number.
+2. Fetches the PR metadata + diff via `gh`.
+3. Runs a deterministic prompt-injection pre-scan on the PR text.
+4. **Spawns three parallel external-provider reviewers** with role-specific briefs: GPT/Codex as Architect, Gemini as Researcher, and local Ollama-Qwen as Analyst.
+5. Synthesises the three verdicts into one structured review artefact, with Claude acting as chairman in the operator's local session.
+6. Writes the artefact to `docs/reviews/<PR>-iter<K>.md`.
+7. Asks the operator (`AskUserQuestion`) what to do next (merge / commit-only / comment-and-label).
+8. Executes the chosen action via `gh`.
 
-Because this runs entirely inside Claude Code, it uses the operator's existing subscription — **no API keys, no OAuth tokens, no GitHub Actions secrets, no separate billing**.
+Because this runs from the operator's local Claude Code session, it needs **no pasted project API keys and no GitHub Actions secrets**. It uses already-authenticated local CLIs / local Ollama, so provider credentials stay in those tools' normal stores. The PR title/body/diff are still sent to the selected model-provider CLIs; do not run it on PR content you are unwilling to disclose to those providers.
 
 ## Schema
 
@@ -38,9 +39,9 @@ Each review contains:
 | Section | What it holds |
 |---|---|
 | **T — Triage** | files changed, lines, author trust, invariant files touched |
-| **S — Security pre-check** | `pi_flags` from the deterministic scan + the Security Auditor subagent's verdict |
-| **Per-change verdict** | one row per file change with AGREE / DISAGREE-WITH-CAVEAT / NEEDS-INFO (from the Code Reviewer subagent) |
-| **Convention adherence** | plan-doc / CHANGELOG / PR-template / branch-name checks (from the Convention Auditor subagent) |
+| **S — Security pre-check** | `pi_flags` from the deterministic scan + the chairman's evaluation of each hit |
+| **Member verdicts** | one subsection per external-provider reviewer: GPT/Codex Architect, Gemini Researcher, and Qwen/Ollama Analyst |
+| **Aggregation** | APPROVE / MODIFY / REJECT counts, split-vote note, and conservative tie/dissent handling |
 | **Decision** | chairman's synthesis: APPROVE / APPROVE-WITH-MINOR-MODIFY / MODIFY / REJECT / NEEDS-MAINTAINER with reasoning |
 | **Required actions before merge** | concrete blockers (or "None") |
 | **Soft suggestions** | nice-to-haves (or "None") |
@@ -56,7 +57,7 @@ Each review contains:
 
 Layer 1: deterministic regex pre-scan in the slash command, looking for override directives, role-reassignment patterns, RTL/zero-width Unicode, Cyrillic-Latin homoglyphs, authority claims, and review-manipulation phrasing.
 
-Layer 2: each subagent is briefed in its own system prompt to treat PR content as data, never instructions. Three subagents in three independent contexts means one compromised brief can't poison the others.
+Layer 2: each external-provider reviewer receives the PR inside explicit untrusted-content tags and is briefed to treat it as data, never instructions. Using separate provider CLIs (GPT/Codex, Gemini, Qwen/Ollama) gives independent contexts and reduces correlated prompt-injection failure modes.
 
 Layer 3: the chairman (the operator's main Claude session) synthesizes the verdicts — and the operator sees the artefact before merging.
 

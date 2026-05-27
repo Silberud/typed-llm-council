@@ -137,7 +137,8 @@ class KimiAdapter(VerifierAdapter):
 
     async def ask_verifier(self, input: VerifierInput) -> VerifierAnswer:
         """The ONLY method on this adapter. Input is type-locked at the schema
-        level — draft/framing/persona content cannot be smuggled in."""
+        level, so extra fields cannot cross the boundary. Allowed-field content
+        is trusted only after Stage 3's leak filter has run."""
         # Belt-and-suspenders runtime type check. The signature annotation is
         # informative under PEP 563-style lazy evaluation but doesn't enforce
         # at runtime — a duck-typed object with the right attributes would

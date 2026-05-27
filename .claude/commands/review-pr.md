@@ -18,15 +18,23 @@ Skipped seats:
 
 ## Stage 0 — Gather (you, deterministic)
 
-Run via Bash (one message, three parallel calls):
+Run via Bash (one message, three parallel calls). First normalize and validate the argument as a numeric PR number; use `$PR` for every later command/path:
 
 ```bash
-gh pr view $ARGUMENTS --json title,body,author,headRefName,headRefOid,baseRefName,additions,deletions,changedFiles
-gh pr diff $ARGUMENTS
-ls docs/reviews/${ARGUMENTS}-iter*.md 2>/dev/null | wc -l
+PR="$ARGUMENTS"
+case "$PR" in
+  ''|*[!0-9]*)
+    echo "Usage: /review-pr <numeric-pr-number>" >&2
+    exit 2
+    ;;
+esac
+
+gh pr view "$PR" --json title,body,author,headRefName,headRefOid,baseRefName,additions,deletions,changedFiles
+gh pr diff "$PR"
+ls "docs/reviews/${PR}-iter"*.md 2>/dev/null | wc -l
 ```
 
-The third command's output is `N` (existing review count); this iteration is `K = N + 1`. Truncate the diff to **50,000 characters** if larger; note truncation in the artefact.
+The third command's output is `N` (existing review count); this iteration is `K = N + 1`. Truncate the diff to **50,000 characters** if larger; note truncation in the artefact. Do not put PR title/body/diff content in shell arguments; pass member briefs through temp files/stdin so PR content is not exposed through process listings.
 
 ---
 
@@ -108,7 +116,7 @@ if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} codex exec \
       --sandbox read-only \
       -c model_reasoning_effort="high" \
       --output-last-message "$OUT" \
-      "$(cat "$PROMPT_FILE")" </dev/null >"$LOG" 2>&1 && [ -s "$OUT" ]; then
+      - <"$PROMPT_FILE" >"$LOG" 2>&1 && [ -s "$OUT" ]; then
   cat "$OUT"
 else
   echo "DROPPED: codex error"
@@ -128,7 +136,7 @@ cat > "$PROMPT_FILE" <<'EOF_PROMPT'
 <full brief with substitutions>
 EOF_PROMPT
 
-if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} gemini -p "$(cat "$PROMPT_FILE")" 2>&1; then
+if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+120} gemini -p "Review this PR using the brief provided on stdin." <"$PROMPT_FILE" 2>&1; then
   : # success — output already on stdout
 else
   echo "DROPPED: gemini error (exit $?)"
@@ -148,21 +156,23 @@ cat > "$PROMPT_FILE" <<'EOF_PROMPT'
 <full brief with substitutions>
 EOF_PROMPT
 
-PAYLOAD=$(jq -n \
+PAYLOAD_FILE=$(mktemp)
+jq -n \
   --arg model "qwen3.6:35b-a3b-coding-nvfp4" \
-  --arg user "$(cat "$PROMPT_FILE")" \
+  --rawfile user "$PROMPT_FILE" \
   '{
     model: $model,
     messages: [{role: "user", content: $user}],
     stream: false
-  }')
+  }' >"$PAYLOAD_FILE"
 
-if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+180} curl -s http://localhost:11434/api/chat -d "$PAYLOAD" | jq -r '.message.content' 2>&1; then
+set -o pipefail
+if ${TIMEOUT_BIN:-} ${TIMEOUT_BIN:+180} curl -s http://localhost:11434/api/chat --data-binary @"$PAYLOAD_FILE" | jq -r '.message.content' 2>&1; then
   :
 else
   echo "DROPPED: ollama error (exit $?)"
 fi
-rm -f "$PROMPT_FILE"
+rm -f "$PROMPT_FILE" "$PAYLOAD_FILE"
 ```
 
 ### Notes on the parallel call
@@ -201,7 +211,7 @@ You also write a **chairman synthesis paragraph** explaining your reasoning for 
 
 ## Stage 4 — Write artefact
 
-Path: `docs/reviews/$ARGUMENTS-iter<K>.md`. Verify the path matches `docs/reviews/[0-9]+-iter[0-9]+\.md` before writing.
+Path: `docs/reviews/$PR-iter<K>.md`. Verify the path matches `docs/reviews/[0-9]+-iter[0-9]+\.md` before writing.
 
 Required sections (full schema in `docs/reviews/README.md`):
 - **T — Triage:** files, lines, author trust, invariant files touched
@@ -241,12 +251,12 @@ Use `AskUserQuestion`. Header chip = the verdict (e.g. "APPROVE", "MODIFY"). Opt
 
 ## Stage 6 — Execute the operator's choice
 
-- **Merge:** `gh pr merge $ARGUMENTS --squash --delete-branch`
+- **Merge:** `gh pr merge "$PR" --squash --delete-branch`
 - **Commit + push review:** stage the artefact, commit with `[skip ci]`, push to the PR's head branch (or main if reviewing main).
-- **Comment:** `gh pr comment $ARGUMENTS --body "🔎 Council review (multi-vendor): docs/reviews/$ARGUMENTS-iter<K>.md. Verdict: <X>. <one-line>"`
-- **Label:** `gh pr edit $ARGUMENTS --add-label needs-maintainer`
+- **Comment:** `gh pr comment "$PR" --body "🔎 Council review (multi-vendor): docs/reviews/$PR-iter<K>.md. Verdict: <X>. <one-line>"`
+- **Label:** `gh pr edit "$PR" --add-label needs-maintainer`
 
-Report back compactly: "Verdict: X (members: G+/G-/Q+). Action: Y. Artefact: docs/reviews/$ARGUMENTS-iterK.md."
+Report back compactly: "Verdict: X (members: G+/G-/Q+). Action: Y. Artefact: docs/reviews/$PR-iterK.md."
 
 ---
 

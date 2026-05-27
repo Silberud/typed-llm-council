@@ -38,9 +38,9 @@ The existing entries under `docs/plans/` are examples of the structure — see t
 
 ## Council review (manual via slash command)
 
-The maintainer reviews PRs using the [`/review-pr`](docs/reviews/README.md) slash command in Claude Code. It spawns three parallel subagents (Code Reviewer / Security Auditor / Convention Auditor — all Opus 4.7), synthesises their verdicts, and writes a structured review to `docs/reviews/<PR>-iter<K>.md` on this branch.
+The maintainer reviews PRs using the [`/review-pr`](docs/reviews/README.md) slash command in Claude Code. It fans the PR out to three external-provider reviewers (GPT/Codex Architect, Gemini Researcher, and local Ollama-Qwen Analyst), then Claude acts as chairman to synthesize their structured verdicts and write `docs/reviews/<PR>-iter<K>.md` on this branch.
 
-Reviews are **advisory** — the maintainer confirms each merge. The slash command runs entirely inside the maintainer's local Claude Code session; there is no CI bot, no API key, no GitHub Actions secret. Expect a review file per invocation (iter1, iter2, …) capturing how subsequent commits shifted the verdict.
+Reviews are **advisory** — the maintainer confirms each merge. The command runs from the maintainer's local Claude Code session; there is no CI bot, no pasted project API key, and no GitHub Actions secret. It does use already-authenticated provider CLIs / local Ollama, and the reviewed PR title/body/diff are sent to those selected providers. Expect a review file per invocation (iter1, iter2, …) capturing how subsequent commits shifted the verdict.
 
 If a review surfaces a substantive concern, address it in a follow-up commit or argue back in a PR comment — the next `/review-pr` invocation will read both the new diff and the comment thread.
 

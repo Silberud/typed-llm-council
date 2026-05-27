@@ -1,4 +1,4 @@
-# Typed LLM Council (v2.3.0)
+# Typed LLM Council
 
 > A multi-model deliberation orchestrator with **three-layer verifier isolation** (schema + adapter + content), **anti-sycophancy forced verdicts**, and **structured per-stage outputs**. Developed by Igor Silberud (H5 Resources).
 
@@ -12,7 +12,7 @@
 
 ## TL;DR
 
-This repo is **building toward** a multi-model council orchestrator with a 7-stage deliberation protocol (Self-MoA-Seq drafting → D3 advocate/juror critique → CoVe factored verification → AceMAD peer-prediction voting → PoLL rotating-chair synthesis → FOCUS drift escalation). The **current release ships the adapter skeleton + a hardened Stage 3 (CoVe verifier-isolation) path**; the rest of the pipeline is sketched in the spec but not yet implemented — see the status table below and [`ROADMAP.md`](ROADMAP.md).
+This repo is **building toward** a multi-model council orchestrator with a 7-stage deliberation protocol (Self-MoA-Seq drafting → D3 advocate/juror critique → CoVe factored verification → AceMAD peer-prediction voting → PoLL rotating-chair synthesis → FOCUS drift escalation). **Tagged release v2.3.0 ships the adapter skeleton + a hardened Stage 3 (CoVe verifier-isolation) path; current `main` also includes the `/review-pr` slash-command council prototype.** The rest of the pipeline is sketched in the spec but not yet implemented — see the status table below and [`ROADMAP.md`](ROADMAP.md).
 
 The architecturally distinct claim of *what is currently implemented* is **structural adapter-level isolation between voting and verifying seats**, enforced at three independent layers:
 
@@ -43,14 +43,14 @@ This invokes [`.claude/commands/review-pr.md`](.claude/commands/review-pr.md), w
 2. Runs a deterministic prompt-injection pre-scan.
 3. **Spawns three parallel council members — each on a different LLM vendor**:
    - **GPT-5.5 (Architect)** via `codex exec` (OpenAI / ChatGPT Pro)
-   - **Gemini 3.1 (Researcher)** via `gemini -p` (Google OAuth)
+   - **Gemini 3.1 (Researcher)** via the Gemini CLI (Google OAuth)
    - **Qwen 3.6 (Analyst)** via local Ollama
    - (Chairman = Claude — the operator's `claude` session)
 4. Synthesises their verdicts (`APPROVE` / `MODIFY` / `REJECT` + confidence).
 5. Writes a structured artefact to `docs/reviews/<PR>-iter<K>.md`.
 6. Asks the operator what to do next (`AskUserQuestion`).
 
-**No pasted API keys, no GitHub Actions secrets, no per-token API billing path in this command** — it runs through your already-authenticated local CLIs, so provider authentication stays in those tools' normal credential stores.
+**No pasted API keys, no GitHub Actions secrets, no per-token API billing path in this command** — it runs through your already-authenticated local CLIs, so provider authentication stays in those tools' normal credential stores. The PR title/body/diff are still sent to the selected model-provider CLIs; do not run it on PR content you are unwilling to disclose to those providers.
 
 ### Real example — the council reviewing PR #24
 
@@ -62,9 +62,9 @@ See [`docs/council_quickstart.md`](docs/council_quickstart.md) for installing an
 
 ---
 
-## Status — what's actually in this release
+## Status — what's actually on `main` vs. the tag
 
-**v2.3.0 ships Phase A + Phase B + Phase E (E.0 + E.1 + E.2 opt-in) of a 9-phase plan, *plus* the working `/review-pr` slash command** (v0 of the multi-vendor council — majority vote, not yet AceMAD-weighted). Be explicit about that.
+**Current `main` contains Phase A + Phase B + Phase E (E.0 + E.1 + E.2 opt-in) of a 9-phase plan, *plus* the working `/review-pr` slash command** (v0 of the multi-vendor council — majority vote, not yet AceMAD-weighted). Tagged `v2.3.0` predates the slash-command prototype; see `CHANGELOG.md`'s `Unreleased` section for post-tag additions. Be explicit about that.
 
 | Phase | What | Status |
 |---|---|---|

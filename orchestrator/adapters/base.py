@@ -47,6 +47,7 @@ class VerifierAdapter(MemberAdapter):
     @abstractmethod
     async def ask_verifier(self, input: VerifierInput) -> VerifierAnswer:
         """The ONLY method the verifier exposes. Input is typed at the schema
-        level (frozen + extra=forbid) — there is no field shape that would let
-        draft/framing/persona content cross the boundary."""
+        level (frozen + extra=forbid), so extra structured fields cannot cross
+        the boundary. Allowed-field content still depends on the Stage 3 leak
+        filter to catch draft/framing/persona smuggling."""
         ...
