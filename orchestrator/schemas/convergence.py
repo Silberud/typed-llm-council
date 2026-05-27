@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Phase(str, Enum):
@@ -47,10 +47,14 @@ class RunStatus(str, Enum):
     FAILED_MAX_ROUNDS = "FAILED_MAX_ROUNDS"
 
 
-class ReviewRequiredChange(BaseModel):
-    """A material change requested by one reviewer."""
+class StrictLedgerModel(BaseModel):
+    """Base model for validated, immutable convergence ledger records."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class ReviewRequiredChange(StrictLedgerModel):
+    """A material change requested by one reviewer."""
 
     id: str = Field(min_length=1)
     description: str = Field(min_length=1)
@@ -58,7 +62,7 @@ class ReviewRequiredChange(BaseModel):
     evidence_or_reason: str = Field(min_length=1)
 
 
-class OptionalSuggestion(BaseModel):
+class OptionalSuggestion(StrictLedgerModel):
     """A non-blocking improvement candidate.
 
     Optional suggestions are preserved for future work but never reset the clean
@@ -66,26 +70,23 @@ class OptionalSuggestion(BaseModel):
     required change in ``JudgeDecision.material_required_changes``.
     """
 
-    model_config = {"extra": "forbid"}
-
     description: str = Field(min_length=1)
     rationale: str | None = Field(default=None, min_length=1)
 
 
-class CouncilReview(BaseModel):
+class CouncilReview(StrictLedgerModel):
     """One provider/role review of the current artifact version."""
 
-    model_config = {"extra": "forbid"}
 
     reviewer_id: str = Field(min_length=1)
     provider: str = Field(min_length=1)
     role: str = Field(min_length=1)
     verdict: ReviewVerdict
-    required_changes: list[ReviewRequiredChange] = Field(default_factory=list)
-    optional_suggestions: list[OptionalSuggestion] = Field(default_factory=list)
+    required_changes: tuple[ReviewRequiredChange, ...] = Field(default_factory=tuple)
+    optional_suggestions: tuple[OptionalSuggestion, ...] = Field(default_factory=tuple)
     main_risk: str = Field(min_length=1)
-    evidence_checked: list[str] = Field(default_factory=list)
-    blind_spots_or_assumptions: list[str] = Field(default_factory=list)
+    evidence_checked: tuple[str, ...] = Field(default_factory=tuple)
+    blind_spots_or_assumptions: tuple[str, ...] = Field(default_factory=tuple)
     confidence: int = Field(ge=0, le=100)
 
     @model_validator(mode="after")
@@ -100,48 +101,44 @@ class CouncilReview(BaseModel):
         return self
 
 
-class RejectedRequiredChange(BaseModel):
+class RejectedRequiredChange(StrictLedgerModel):
     """A reviewer-requested change the Judge rejected as non-material."""
 
-    model_config = {"extra": "forbid"}
 
     id: str = Field(min_length=1)
     source_reviewer: str = Field(min_length=1)
     reason_rejected_as_non_material: str = Field(min_length=1)
 
 
-class MaterialRequiredChange(BaseModel):
+class MaterialRequiredChange(StrictLedgerModel):
     """A material change accepted by the Judge and required before convergence."""
 
-    model_config = {"extra": "forbid"}
 
     id: str = Field(min_length=1)
-    source_reviewers: list[str] = Field(min_length=1)
+    source_reviewers: tuple[str, ...] = Field(min_length=1)
     description: str = Field(min_length=1)
     acceptance_criteria: str = Field(min_length=1)
     severity: Severity = Severity.MATERIAL
 
 
-class RemainingDissent(BaseModel):
+class RemainingDissent(StrictLedgerModel):
     """Dissent preserved in the ledger after the Judge decision."""
 
-    model_config = {"extra": "forbid"}
 
     reviewer_id: str = Field(min_length=1)
     summary: str = Field(min_length=1)
     material: bool
 
 
-class JudgeDecision(BaseModel):
+class JudgeDecision(StrictLedgerModel):
     """Chair/Judge synthesis for one convergence round."""
 
-    model_config = {"extra": "forbid"}
 
     verdict: ReviewVerdict
-    material_required_changes: list[MaterialRequiredChange] = Field(default_factory=list)
-    rejected_required_changes: list[RejectedRequiredChange] = Field(default_factory=list)
-    optional_suggestions: list[OptionalSuggestion] = Field(default_factory=list)
-    dissent_remaining: list[RemainingDissent] = Field(default_factory=list)
+    material_required_changes: tuple[MaterialRequiredChange, ...] = Field(default_factory=tuple)
+    rejected_required_changes: tuple[RejectedRequiredChange, ...] = Field(default_factory=tuple)
+    optional_suggestions: tuple[OptionalSuggestion, ...] = Field(default_factory=tuple)
+    dissent_remaining: tuple[RemainingDissent, ...] = Field(default_factory=tuple)
     evidence_gates_passed: bool
     clean_round: bool
     confidence: int = Field(ge=0, le=100)
@@ -200,14 +197,13 @@ class JudgeDecision(BaseModel):
         return self
 
 
-class ConvergenceRound(BaseModel):
+class ConvergenceRound(StrictLedgerModel):
     """One review/Judge cycle over a specific artifact version."""
 
-    model_config = {"extra": "forbid"}
 
     round_number: int = Field(ge=1)
     artifact_version: int = Field(ge=1)
-    reviews: list[CouncilReview] = Field(min_length=1)
+    reviews: tuple[CouncilReview, ...] = Field(min_length=1)
     judge: JudgeDecision
 
     @model_validator(mode="after")
@@ -233,6 +229,14 @@ class ConvergenceRound(BaseModel):
 
         accepted_coverage: set[tuple[str, str]] = set()
         for accepted in self.judge.material_required_changes:
+            duplicate_sources = sorted(
+                {source for source in accepted.source_reviewers if accepted.source_reviewers.count(source) > 1}
+            )
+            if duplicate_sources:
+                msg = f"duplicate material_required_changes source_reviewers for {accepted.id}: " + ", ".join(
+                    duplicate_sources
+                )
+                raise ValueError(msg)
             source_reviewers = set(accepted.source_reviewers)
             unknown_sources = source_reviewers - reviewer_id_set - {"judge"}
             if unknown_sources:
@@ -258,6 +262,12 @@ class ConvergenceRound(BaseModel):
                 raise ValueError(msg)
             rejected_coverage.add((rejected.id, rejected.source_reviewer))
 
+        overlap = sorted(accepted_coverage & rejected_coverage)
+        if overlap:
+            rendered = ", ".join(f"{change_id}:{reviewer_id}" for change_id, reviewer_id in overlap)
+            msg = "reviewer required_changes cannot be both accepted and rejected: " + rendered
+            raise ValueError(msg)
+
         proposed_pairs = {
             (change_id, reviewer_id)
             for change_id, reviewer_ids_for_change in proposed_by_id.items()
@@ -271,10 +281,9 @@ class ConvergenceRound(BaseModel):
         return self
 
 
-class ConvergenceLedger(BaseModel):
+class ConvergenceLedger(StrictLedgerModel):
     """Append-only ledger for plan or execution convergence."""
 
-    model_config = {"extra": "forbid"}
 
     run_id: str = Field(min_length=1)
     goal: str = Field(min_length=1)
@@ -282,7 +291,7 @@ class ConvergenceLedger(BaseModel):
     artifact_id: str = Field(min_length=1)
     clean_rounds_required: int = Field(default=3, ge=1)
     max_rounds: int = Field(default=9, ge=1)
-    rounds: list[ConvergenceRound] = Field(default_factory=list)
+    rounds: tuple[ConvergenceRound, ...] = Field(default_factory=tuple)
     status: RunStatus = RunStatus.RUNNING
     blocked_reason: str | None = Field(default=None, min_length=1)
 
@@ -326,7 +335,7 @@ class ConvergenceLedger(BaseModel):
         return self
 
     @staticmethod
-    def _count_consecutive_clean_rounds(rounds: list[ConvergenceRound]) -> int:
+    def _count_consecutive_clean_rounds(rounds: tuple[ConvergenceRound, ...]) -> int:
         """Count clean rounds from the end of ``rounds`` backwards."""
         count = 0
         for round_ in reversed(rounds):
@@ -354,7 +363,7 @@ class ConvergenceLedger(BaseModel):
         if round_.round_number != expected_round_number:
             msg = f"round_number must be {expected_round_number}, got {round_.round_number}"
             raise ValueError(msg)
-        next_rounds = [*self.rounds, round_]
+        next_rounds = (*self.rounds, round_)
         if round_.judge.verdict == ReviewVerdict.REJECT:
             status = RunStatus.BLOCKED
             blocked_reason = round_.judge.rationale

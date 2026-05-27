@@ -419,7 +419,7 @@ def test_duplicate_required_change_ids_need_each_reviewer_accounted() -> None:
             "material_required_changes": [
                 MaterialRequiredChange(
                     id="REQ-DUP",
-                    source_reviewers=["alice"],
+                    source_reviewers=("alice",),
                     description="Only Alice's copy of the duplicate id was accepted.",
                     acceptance_criteria="Bob must still be accepted or rejected separately.",
                 )
@@ -577,4 +577,48 @@ def test_material_required_change_sources_must_match_proposers() -> None:
             ]
         }
     )
-    assert round_with(1, judge_originated).judge.material_required_changes[0].source_reviewers == ["judge"]
+    assert round_with(1, judge_originated).judge.material_required_changes[0].source_reviewers == ("judge",)
+
+
+def test_reviewer_required_change_cannot_be_both_accepted_and_rejected() -> None:
+    review = review_with_required_change(reviewer_id="alice", change_id="REQ-CONFLICT")
+    contradictory = dirty_decision().model_copy(
+        update={
+            "material_required_changes": [
+                MaterialRequiredChange(
+                    id="REQ-CONFLICT",
+                    source_reviewers=("alice",),
+                    description="The judge accepted Alice's change.",
+                    acceptance_criteria="It must be implemented before convergence.",
+                )
+            ],
+            "rejected_required_changes": [
+                RejectedRequiredChange(
+                    id="REQ-CONFLICT",
+                    source_reviewer="alice",
+                    reason_rejected_as_non_material="The same pair cannot also be rejected.",
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(ValidationError, match="cannot be both accepted and rejected: REQ-CONFLICT:alice"):
+        round_with_review(1, review, contradictory)
+
+
+def test_ledger_records_are_immutable_after_validation() -> None:
+    decision = clean_decision()
+    with pytest.raises(ValidationError, match="Instance is frozen"):
+        decision.confidence = 999
+
+    ledger = ConvergenceLedger(
+        run_id="run-13",
+        goal="Keep terminal state immutable",
+        phase=Phase.PLAN,
+        artifact_id="plan.md",
+        clean_rounds_required=1,
+    ).with_round(round_with(1, clean_decision()))
+
+    assert ledger.status is RunStatus.CONVERGED
+    with pytest.raises(AttributeError):
+        getattr(ledger.rounds, "append")(round_with(2, clean_decision()))
