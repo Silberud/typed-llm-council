@@ -12,10 +12,12 @@ Stage 3, and fails closed when:
 1. Any n-gram window (default 8 words) from draft_text or framing_note
    appears verbatim in the question — unless that same window also appears
    in operator_prompt (legitimate operator-supplied context).
-2. Any role/council-meta marker ("advocate", "juror", "skeptic", "chairman",
-   "council", "consensus", "dissent", "draft says", etc.) appears in the
-   question or operator_prompt — unless that marker also appears in the
-   operator's original prompt (legitimate operator-supplied context).
+2. Any configured multi-word role/council-meta marker (for example,
+   "the advocate", "the juror", "the council", "draft says") appears in the
+   verification question — unless that marker also appears in the operator's
+   original prompt (legitimate operator-supplied context). Single-word role
+   terms are intentionally not blocked to avoid false positives, and
+   operator_prompt tampering is checked by draft/framing n-gram overlap.
 
 Allowed by design: noun-phrase claim restatement (e.g., "Does Python 3.12
 include PEP 695?") — that's how CoVe questions normally work. The 8-word

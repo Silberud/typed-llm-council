@@ -49,7 +49,7 @@ queue_b_name = "drift_judge"
 
 [adapters.grok]
 # Stubbed — no OAuth CLI path for X Premium+ tier. Adapter always DROPS.
-# See KNOWN_GAPS.md (will host EX-002 once written).
+# See docs/operator_setup.md → CG-001.
 enabled = false
 
 [adapters.kimi]
