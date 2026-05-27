@@ -40,3 +40,16 @@ updates:
       - "ci"
     commit-message:
       prefix: "ci"
+
+  # pre-commit hook repos pinned in .pre-commit-config.yaml
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "tooling"
+    commit-message:
+      prefix: "tooling"

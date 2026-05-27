@@ -7,6 +7,14 @@ releases.
 
 ## Unreleased
 
+- Packaging: include `orchestrator/config.toml` in built wheels and add a
+  packaging regression test.
+- CI: add Python 3.13 to the test matrix.
+- Tooling: add Dependabot coverage for pinned pre-commit hooks.
+- Tests: add regression coverage for config-driven comparator mode and the
+  Stage 3 demo's no-real-model-call guarantee.
+- Docs: align the leak-filter guarantee, Grok-stub config comment, and README
+  structural-test count with the current implementation/docs.
 - CI: bump `actions/checkout` from v4 to v6.
 - CI: bump `actions/setup-python` from v5 to v6.
 - Docs: correct the CHANGELOG description of Issue templates landed in v2.3.0.
