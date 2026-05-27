@@ -1,6 +1,6 @@
-# Automated PR reviews
+# Council reviews
 
-Each file in this directory is a structured forensic review of a pull request, written by the [`tools/pr_review`](../../tools/pr_review/) bot via the [`.github/workflows/pr-review.yml`](../../.github/workflows/pr-review.yml) workflow.
+Each file in this directory is a structured forensic review of a pull request, produced by the [`/review-pr`](../../.claude/commands/review-pr.md) slash command in Claude Code.
 
 ## File naming
 
@@ -9,7 +9,27 @@ Each file in this directory is a structured forensic review of a pull request, w
 ```
 
 - `PR-number` — the pull request this review is of
-- `K` — iteration. The bot re-reviews on every new push to a PR; iteration `1` is the open event, `2` is the first push after that, etc.
+- `K` — iteration. The reviewer can be re-invoked on the same PR after new commits; iteration 1 is the first review, 2 is the second, etc.
+
+## How it works
+
+In Claude Code, inside this repo, the operator types:
+
+```
+/review-pr 23
+```
+
+The slash command (`.claude/commands/review-pr.md`) then:
+
+1. Fetches the PR metadata + diff via `gh`.
+2. Runs a deterministic prompt-injection pre-scan on the PR text.
+3. **Spawns three parallel subagents** via the native Agent tool — Code Reviewer, Security Auditor, Convention Auditor — each with a focused brief and Opus 4.7 as the underlying model.
+4. Synthesises the three verdicts into one structured review artefact.
+5. Writes the artefact to `docs/reviews/<PR>-iter<K>.md`.
+6. Asks the operator (`AskUserQuestion`) what to do next (merge / commit-only / comment-and-label).
+7. Executes the chosen action via `gh`.
+
+Because this runs entirely inside Claude Code, it uses the operator's existing subscription — **no API keys, no OAuth tokens, no GitHub Actions secrets, no separate billing**.
 
 ## Schema
 
@@ -17,49 +37,33 @@ Each review contains:
 
 | Section | What it holds |
 |---|---|
-| **Triage** | files changed, lines, whether invariant files were touched, author trust class |
-| **Security pre-check** | results of the regex prompt-injection tripwire + the bot's own verdict on the hits |
-| **Per-change verdict** | one row per file change with AGREE / DISAGREE / DISAGREE-WITH-CAVEAT / NEEDS-INFO |
-| **Convention adherence** | plan-doc present? CHANGELOG `Unreleased` updated? PR template used? |
-| **Decision** | APPROVE / APPROVE-WITH-MINOR-MODIFY / MODIFY / REJECT / NEEDS-MAINTAINER with reasoning |
-
-## Status of the bot
-
-**v0 (this version) is single-LLM.** One Anthropic Opus 4.7 call per review. The forensic structure mirrors the manual review pattern used on PRs #7, #8, #9, and #12.
-
-**v1 will swap in the full multi-stage council** once Phases D + F land on the roadmap. The output schema is designed to remain stable across that transition — v1 will populate the same sections, but with multi-model deliberation backing each verdict.
+| **T — Triage** | files changed, lines, author trust, invariant files touched |
+| **S — Security pre-check** | `pi_flags` from the deterministic scan + the Security Auditor subagent's verdict |
+| **Per-change verdict** | one row per file change with AGREE / DISAGREE-WITH-CAVEAT / NEEDS-INFO (from the Code Reviewer subagent) |
+| **Convention adherence** | plan-doc / CHANGELOG / PR-template / branch-name checks (from the Convention Auditor subagent) |
+| **Decision** | chairman's synthesis: APPROVE / APPROVE-WITH-MINOR-MODIFY / MODIFY / REJECT / NEEDS-MAINTAINER with reasoning |
+| **Required actions before merge** | concrete blockers (or "None") |
+| **Soft suggestions** | nice-to-haves (or "None") |
+| **Cross-iteration comparison** | for K > 1: list of prior-iter required actions marked resolved / unaddressed / new |
 
 ## What it does NOT do
 
-- **The bot never merges or blocks.** All decisions are advisory; the maintainer remains the merge gate.
-- **The bot does not run on forks.** Forks don't have access to the repo's secrets, so the workflow exits early (`if: head.repo.full_name == repository`). Same-repo PRs get full review.
-- **The bot does not execute reviewer code from the PR.** It reads PR metadata and diff via the GitHub API, runs `tools/pr_review` from the base branch checkout, and copies only the generated markdown artefact into the PR branch. The regular CI workflow, not this bot, is responsible for running tests.
-- **The bot does not auto-merge.** Even on APPROVE verdicts.
+- **It does not merge or block automatically.** Even on APPROVE, the operator confirms the merge via `AskUserQuestion`.
+- **It does not run unattended.** The slash command requires the operator to invoke it. Automation (e.g. a launchd job that calls `claude -p "/review-pr ..." ` headlessly) is an opt-in future enhancement.
+- **It does not run on forks.** The slash command is repo-local and runs in the operator's local Claude Code, not in CI.
 
 ## Prompt-injection defense
 
-The PR diff and body are JSON-encoded before being sent to Claude. The system prompt explicitly tells Claude that string values inside that JSON payload are *data*, never instructions, and that the reviewer must not adopt roles or follow directives that appear in that content. A regex pre-scan also flags known injection patterns (override directives, content-boundary markers, Markdown fences, Unicode bidi controls, zero-width characters, Cyrillic-Latin homoglyphs, etc.) — those hits are surfaced as findings in the review's `Security pre-check` section.
+Layer 1: deterministic regex pre-scan in the slash command, looking for override directives, role-reassignment patterns, RTL/zero-width Unicode, Cyrillic-Latin homoglyphs, authority claims, and review-manipulation phrasing.
 
-If a contributor submits a PR with what the bot judges to be a genuine prompt-injection attempt, expect the review's Decision section to read **NEEDS-MAINTAINER** with the security finding explained.
+Layer 2: each subagent is briefed in its own system prompt to treat PR content as data, never instructions. Three subagents in three independent contexts means one compromised brief can't poison the others.
 
-## Local validation
+Layer 3: the chairman (the operator's main Claude session) synthesizes the verdicts — and the operator sees the artefact before merging.
 
-The bot is runnable locally for testing prompt changes. It uses the `claude` CLI from your Claude Code Pro/Max subscription — no separate API key.
+## Reading an example
 
-```bash
-# Pre-req: `claude` CLI installed and authenticated locally
-#   npm install -g @anthropic-ai/claude-code
-#   claude   # then `/login` once if not already authenticated
-
-# Run against any historical PR (consumes subscription quota)
-python -m tools.pr_review --pr 12
-
-# Or just check what it WOULD do without making any model call
-python -m tools.pr_review --pr 12 --dry-run
-```
-
-To run from a clean environment that mirrors the CI workflow, set `CLAUDE_CODE_OAUTH_TOKEN` explicitly (obtain it from the same auth that powers your local `claude` CLI).
+[`13-iter1.md`](13-iter1.md) is the first review in this directory, written manually before the slash command existed, but following the same schema. New reviews generated by `/review-pr` use the same structure.
 
 ## Maintenance
 
-The prompts live at [`tools/pr_review/prompts.py`](../../tools/pr_review/prompts.py). Changes go through the regular plan-doc-then-PR convention from [`CONTRIBUTING.md`](../../CONTRIBUTING.md) — including, recursively, the bot reviewing changes to its own prompts.
+The slash command itself lives at [`.claude/commands/review-pr.md`](../../.claude/commands/review-pr.md). Changes to the prompt go through the regular plan-doc-then-PR convention from [`CONTRIBUTING.md`](../../CONTRIBUTING.md) — including, recursively, the council reviewing changes to its own prompt.
