@@ -1,12 +1,12 @@
 # Examples
 
-Runnable demonstrations of what Typed LLM Council currently implements. These are designed to **run without any API credentials** — they use mock adapters and mock decomposers so you can see the pipeline shape without burning model quota.
+Runnable demonstrations of what Typed LLM Council currently implements. These are designed to **run without any API credentials** — they force mock adapters/decomposers and placeholder comparators where needed so you can see the pipeline shape without burning model quota.
 
 ## What's here
 
 | File | What it shows |
 |---|---|
-| `stage3_verification_demo.py` | The Phase E (CoVe verifier) pipeline end-to-end: decomposition → leak filter → mock verifier → comparator. Pure structural demo — no real LLM calls. |
+| `stage3_verification_demo.py` | The Phase E (CoVe verifier) pipeline end-to-end: mock decomposition → real leak filter → mock verifier → forced placeholder comparator. Pure structural demo — no real LLM calls. |
 
 ## Running
 

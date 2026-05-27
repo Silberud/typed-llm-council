@@ -14,8 +14,8 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "deps"
-    # Group security and version updates separately so a routine bump
-    # PR doesn't drown a real security advisory.
+    # Group routine Python version updates by runtime/dev dependency family so
+    # related bumps land together.
     groups:
       python-runtime:
         patterns:

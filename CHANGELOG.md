@@ -1,8 +1,17 @@
 # Changelog
 
-`pyproject.toml` package version stays `2.3.0` (the repo is not on PyPI;
-"versions" below are *hardening-pass labels*, not released package versions).
-Each pass is a small set of commits described under its heading.
+`v2.3.0` is the first GitHub tag/release. `pyproject.toml` also remains
+`2.3.0` for this source distribution, but the repo is not on PyPI. Older
+"hardening pass" sections below are historical commit-range labels, not package
+releases.
+
+## Unreleased
+
+- CI: bump `actions/checkout` from v4 to v6.
+- CI: bump `actions/setup-python` from v5 to v6.
+- Docs: correct the CHANGELOG description of Issue templates landed in v2.3.0.
+- Docs/examples: force the Stage 3 structural demo to use the placeholder
+  comparator so it cannot make a real Claude comparator call under local config.
 
 ## v2.3.0 — 2026-05-27
 

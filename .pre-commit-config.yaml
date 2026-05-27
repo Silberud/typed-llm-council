@@ -2,9 +2,9 @@
 # Install once:  pip install pre-commit && pre-commit install
 # Run on all files: pre-commit run --all-files
 #
-# CI runs the same ruff version (per pyproject's ruff>=0.4). The pinned
-# pre-commit ref below stays current via Dependabot's github-actions
-# / pre-commit ecosystem (pre-commit autoupdate also works).
+# CI installs Ruff from pyproject's dev dependencies. This pre-commit hook pins
+# its own Ruff wrapper version; keep it current with `pre-commit autoupdate`
+# (or add Dependabot's pre-commit ecosystem if automated hook bumps are desired).
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit

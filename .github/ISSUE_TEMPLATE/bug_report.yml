@@ -39,7 +39,7 @@ body:
       placeholder: |
         Python 3.12.0
         macOS 15.4
-        commit 377e43e (or v2.3.0)
+        commit <sha> or tag v2.3.0
         installed editable with [dev] extras
     validations:
       required: true
