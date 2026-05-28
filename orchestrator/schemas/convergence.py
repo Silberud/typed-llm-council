@@ -50,7 +50,7 @@ class RunStatus(str, Enum):
 class StrictLedgerModel(BaseModel):
     """Base model for validated, immutable convergence ledger records."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
 
 
 class ReviewRequiredChange(StrictLedgerModel):
@@ -92,6 +92,9 @@ class CouncilReview(StrictLedgerModel):
     @model_validator(mode="after")
     def verdict_matches_required_changes(self) -> "CouncilReview":
         """APPROVE means no material changes are being requested."""
+        if self.reviewer_id == "judge":
+            msg = "reviewer_id 'judge' is reserved for Judge-originated material changes"
+            raise ValueError(msg)
         if self.verdict == ReviewVerdict.APPROVE and self.required_changes:
             msg = "APPROVE reviews cannot include required_changes"
             raise ValueError(msg)
@@ -209,6 +212,16 @@ class ConvergenceRound(StrictLedgerModel):
     @model_validator(mode="after")
     def reviewer_required_changes_are_accounted_for(self) -> "ConvergenceRound":
         """Every reviewer-requested material change must be accepted or rejected."""
+        if self.judge.clean_round:
+            reviews_without_evidence = sorted(
+                review.reviewer_id for review in self.reviews if not review.evidence_checked
+            )
+            if reviews_without_evidence:
+                msg = "clean rounds require each review to record evidence_checked: " + ", ".join(
+                    reviews_without_evidence
+                )
+                raise ValueError(msg)
+
         proposed_by_id: dict[str, set[str]] = {}
         reviewer_ids = [review.reviewer_id for review in self.reviews]
         duplicate_reviewer_ids = sorted({reviewer_id for reviewer_id in reviewer_ids if reviewer_ids.count(reviewer_id) > 1})
@@ -216,6 +229,19 @@ class ConvergenceRound(StrictLedgerModel):
             msg = "duplicate reviewer_id values: " + ", ".join(duplicate_reviewer_ids)
             raise ValueError(msg)
         reviewer_id_set = set(reviewer_ids)
+
+        dissent_reviewer_ids = [dissent.reviewer_id for dissent in self.judge.dissent_remaining]
+        duplicate_dissent_reviewer_ids = sorted(
+            {reviewer_id for reviewer_id in dissent_reviewer_ids if dissent_reviewer_ids.count(reviewer_id) > 1}
+        )
+        if duplicate_dissent_reviewer_ids:
+            msg = "duplicate dissent_remaining reviewer_id values: " + ", ".join(duplicate_dissent_reviewer_ids)
+            raise ValueError(msg)
+        unknown_dissent_reviewer_ids = sorted(set(dissent_reviewer_ids) - reviewer_id_set)
+        if unknown_dissent_reviewer_ids:
+            msg = "dissent_remaining reviewer_id values unknown: " + ", ".join(unknown_dissent_reviewer_ids)
+            raise ValueError(msg)
+
         for review in self.reviews:
             change_ids = [change.id for change in review.required_changes]
             duplicate_change_ids = sorted({change_id for change_id in change_ids if change_ids.count(change_id) > 1})
@@ -226,6 +252,19 @@ class ConvergenceRound(StrictLedgerModel):
                 raise ValueError(msg)
             for change in review.required_changes:
                 proposed_by_id.setdefault(change.id, set()).add(review.reviewer_id)
+
+        accepted_ids = [change.id for change in self.judge.material_required_changes]
+        duplicate_accepted_ids = sorted({change_id for change_id in accepted_ids if accepted_ids.count(change_id) > 1})
+        if duplicate_accepted_ids:
+            msg = "duplicate material_required_changes ids: " + ", ".join(duplicate_accepted_ids)
+            raise ValueError(msg)
+
+        rejected_pairs = [(change.id, change.source_reviewer) for change in self.judge.rejected_required_changes]
+        duplicate_rejected_pairs = sorted({pair for pair in rejected_pairs if rejected_pairs.count(pair) > 1})
+        if duplicate_rejected_pairs:
+            rendered = ", ".join(f"{change_id}:{reviewer_id}" for change_id, reviewer_id in duplicate_rejected_pairs)
+            msg = "duplicate rejected_required_changes pairs: " + rendered
+            raise ValueError(msg)
 
         accepted_coverage: set[tuple[str, str]] = set()
         for accepted in self.judge.material_required_changes:
@@ -289,7 +328,7 @@ class ConvergenceLedger(StrictLedgerModel):
     goal: str = Field(min_length=1)
     phase: Phase
     artifact_id: str = Field(min_length=1)
-    clean_rounds_required: int = Field(default=3, ge=1)
+    clean_rounds_required: int = Field(default=3, ge=3)
     max_rounds: int = Field(default=9, ge=1)
     rounds: tuple[ConvergenceRound, ...] = Field(default_factory=tuple)
     status: RunStatus = RunStatus.RUNNING
@@ -301,10 +340,24 @@ class ConvergenceLedger(StrictLedgerModel):
         clean_streak = 0
         expected_status = RunStatus.RUNNING
         expected_blocked_reason: str | None = None
+        previous_round: ConvergenceRound | None = None
+        if self.max_rounds < self.clean_rounds_required:
+            msg = "max_rounds must be at least clean_rounds_required"
+            raise ValueError(msg)
         for expected, round_ in enumerate(self.rounds, start=1):
             if round_.round_number != expected:
                 msg = f"round_number must be {expected}, got {round_.round_number}"
                 raise ValueError(msg)
+            if previous_round is not None:
+                if round_.artifact_version < previous_round.artifact_version:
+                    msg = "artifact_version cannot decrease"
+                    raise ValueError(msg)
+                if (
+                    previous_round.judge.material_required_changes
+                    and round_.artifact_version <= previous_round.artifact_version
+                ):
+                    msg = "artifact_version must advance after material required changes"
+                    raise ValueError(msg)
             if expected_status != RunStatus.RUNNING:
                 msg = f"terminal {expected_status.value} round cannot be followed by more rounds"
                 raise ValueError(msg)
@@ -318,6 +371,7 @@ class ConvergenceLedger(StrictLedgerModel):
                     expected_status = RunStatus.CONVERGED
                 elif expected >= self.max_rounds:
                     expected_status = RunStatus.FAILED_MAX_ROUNDS
+            previous_round = round_
 
         if self.status != expected_status:
             msg = f"ledger status must be {expected_status.value}, got {self.status.value}"

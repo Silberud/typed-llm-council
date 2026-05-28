@@ -228,11 +228,12 @@ def test_max_rounds_without_convergence_enters_failed_state() -> None:
         phase=Phase.PLAN,
         artifact_id="plan.md",
         clean_rounds_required=3,
-        max_rounds=2,
+        max_rounds=3,
     )
 
     ledger = ledger.with_round(round_with(1, dirty_decision()))
     ledger = ledger.with_round(round_with(2, dirty_decision()))
+    ledger = ledger.with_round(round_with(3, dirty_decision()))
 
     assert ledger.status is RunStatus.FAILED_MAX_ROUNDS
 
@@ -260,7 +261,7 @@ def test_reviewer_verdicts_require_material_change_consistency() -> None:
 
     with pytest.raises(ValidationError, match="MODIFY/REJECT reviews must include"):
         CouncilReview(
-            reviewer_id="judge",
+            reviewer_id="chair",
             provider="claude",
             role="judge",
             verdict=ReviewVerdict.MODIFY,
@@ -291,12 +292,14 @@ def test_terminal_ledgers_are_append_closed() -> None:
         goal="Converge once",
         phase=Phase.PLAN,
         artifact_id="plan.md",
-        clean_rounds_required=1,
-    ).with_round(round_with(1, clean_decision()))
+    )
+    ledger = ledger.with_round(round_with(1, clean_decision()))
+    ledger = ledger.with_round(round_with(2, clean_decision()))
+    ledger = ledger.with_round(round_with(3, clean_decision()))
 
     assert ledger.status is RunStatus.CONVERGED
     with pytest.raises(ValueError, match="cannot append rounds to terminal ledger status CONVERGED"):
-        ledger.with_round(round_with(2, clean_decision()))
+        ledger.with_round(round_with(4, clean_decision()))
 
 
 def test_required_text_fields_are_non_empty() -> None:
@@ -336,10 +339,12 @@ def test_with_round_revalidates_resulting_ledger() -> None:
         goal="Prove append path cannot bypass validators",
         phase=Phase.PLAN,
         artifact_id="plan.md",
-        max_rounds=1,
+        max_rounds=3,
     )
 
     next_ledger = ledger.with_round(round_with(1, dirty_decision()))
+    next_ledger = next_ledger.with_round(round_with(2, dirty_decision()))
+    next_ledger = next_ledger.with_round(round_with(3, dirty_decision()))
 
     assert next_ledger.status is RunStatus.FAILED_MAX_ROUNDS
     with pytest.raises(ValidationError, match="ledger status must be FAILED_MAX_ROUNDS, got RUNNING"):
@@ -457,8 +462,12 @@ def test_deserialized_ledger_rejects_rounds_after_terminal_prefixes() -> None:
             goal="Reject extra rounds after convergence",
             phase=Phase.PLAN,
             artifact_id="plan.md",
-            clean_rounds_required=1,
-            rounds=[round_with(1, clean_decision()), round_with(2, dirty_decision())],
+            rounds=[
+                round_with(1, clean_decision()),
+                round_with(2, clean_decision()),
+                round_with(3, clean_decision()),
+                round_with(4, dirty_decision()),
+            ],
             status=RunStatus.FAILED_MAX_ROUNDS,
         )
 
@@ -616,9 +625,238 @@ def test_ledger_records_are_immutable_after_validation() -> None:
         goal="Keep terminal state immutable",
         phase=Phase.PLAN,
         artifact_id="plan.md",
-        clean_rounds_required=1,
-    ).with_round(round_with(1, clean_decision()))
+    )
+    ledger = ledger.with_round(round_with(1, clean_decision()))
+    ledger = ledger.with_round(round_with(2, clean_decision()))
+    ledger = ledger.with_round(round_with(3, clean_decision()))
 
     assert ledger.status is RunStatus.CONVERGED
     with pytest.raises(AttributeError):
-        getattr(ledger.rounds, "append")(round_with(2, clean_decision()))
+        getattr(ledger.rounds, "append")(round_with(4, clean_decision()))
+
+
+def test_model_copy_update_cannot_smuggle_mutable_nested_collections() -> None:
+    review = review_with_required_change(reviewer_id="alice", change_id="REQ-MUTABLE")
+    unvalidated_decision = dirty_decision().model_copy(
+        update={
+            "material_required_changes": [
+                MaterialRequiredChange(
+                    id="REQ-MUTABLE",
+                    source_reviewers=["alice"],
+                    description="The accepted change must be immutable after round validation.",
+                    acceptance_criteria="Nested model instances are revalidated and normalized.",
+                )
+            ]
+        }
+    )
+
+    round_ = round_with_review(1, review, unvalidated_decision)
+
+    assert round_.judge.material_required_changes == (
+        MaterialRequiredChange(
+            id="REQ-MUTABLE",
+            source_reviewers=("alice",),
+            description="The accepted change must be immutable after round validation.",
+            acceptance_criteria="Nested model instances are revalidated and normalized.",
+        ),
+    )
+    with pytest.raises(AttributeError):
+        getattr(round_.judge.material_required_changes, "append")(
+            MaterialRequiredChange(
+                id="REQ-OTHER",
+                source_reviewers=["judge"],
+                description="Mutation should be impossible.",
+                acceptance_criteria="Tuple fields have no append method.",
+            )
+        )
+
+
+def test_duplicate_judge_accounting_records_are_rejected() -> None:
+    review = review_with_required_change(reviewer_id="alice", change_id="REQ-DUP-JUDGE")
+    duplicate_accepted = dirty_decision().model_copy(
+        update={
+            "material_required_changes": [
+                MaterialRequiredChange(
+                    id="REQ-DUP-JUDGE",
+                    source_reviewers=["alice"],
+                    description="First accepted copy.",
+                    acceptance_criteria="Duplicate accepted records are ambiguous.",
+                ),
+                MaterialRequiredChange(
+                    id="REQ-DUP-JUDGE",
+                    source_reviewers=["alice"],
+                    description="Second accepted copy.",
+                    acceptance_criteria="Duplicate accepted records are ambiguous.",
+                ),
+            ]
+        }
+    )
+    with pytest.raises(ValidationError, match="duplicate material_required_changes ids: REQ-DUP-JUDGE"):
+        round_with_review(1, review, duplicate_accepted)
+
+    duplicate_rejected = clean_decision().model_copy(
+        update={
+            "clean_round": False,
+            "confidence": 80,
+            "rejected_required_changes": [
+                RejectedRequiredChange(
+                    id="REQ-DUP-JUDGE",
+                    source_reviewer="alice",
+                    reason_rejected_as_non_material="First rejection.",
+                ),
+                RejectedRequiredChange(
+                    id="REQ-DUP-JUDGE",
+                    source_reviewer="alice",
+                    reason_rejected_as_non_material="Second rejection.",
+                ),
+            ],
+        }
+    )
+    with pytest.raises(ValidationError, match="duplicate rejected_required_changes pairs: REQ-DUP-JUDGE:alice"):
+        round_with_review(1, review, duplicate_rejected)
+
+
+def test_artifact_version_must_not_go_backwards_or_skip_required_revision() -> None:
+    dirty_round = round_with(1, dirty_decision())
+    clean_same_version = ConvergenceRound(
+        round_number=2,
+        artifact_version=dirty_round.artifact_version,
+        reviews=[approve_review()],
+        judge=clean_decision(),
+    )
+
+    ledger = ConvergenceLedger(
+        run_id="run-14",
+        goal="Require a revised artifact after material changes",
+        phase=Phase.PLAN,
+        artifact_id="plan.md",
+    ).with_round(dirty_round)
+    with pytest.raises(ValidationError, match="artifact_version must advance after material required changes"):
+        ledger.with_round(clean_same_version)
+
+    with pytest.raises(ValidationError, match="artifact_version cannot decrease"):
+        ConvergenceLedger(
+            run_id="run-15",
+            goal="Reject decreasing artifact versions on replay",
+            phase=Phase.PLAN,
+            artifact_id="plan.md",
+            rounds=[
+                ConvergenceRound(round_number=1, artifact_version=2, reviews=[approve_review()], judge=clean_decision()),
+                ConvergenceRound(round_number=2, artifact_version=1, reviews=[approve_review()], judge=clean_decision()),
+            ],
+            status=RunStatus.RUNNING,
+        )
+
+
+def test_protocol_requires_at_least_three_clean_rounds_and_enough_max_rounds() -> None:
+    with pytest.raises(ValidationError, match="Input should be greater than or equal to 3"):
+        ConvergenceLedger(
+            run_id="run-16",
+            goal="Do not weaken convergence below three clean rounds",
+            phase=Phase.PLAN,
+            artifact_id="plan.md",
+            clean_rounds_required=1,
+        )
+
+    with pytest.raises(ValidationError, match="max_rounds must be at least clean_rounds_required"):
+        ConvergenceLedger(
+            run_id="run-17",
+            goal="Impossible clean-round threshold",
+            phase=Phase.PLAN,
+            artifact_id="plan.md",
+            clean_rounds_required=4,
+            max_rounds=3,
+        )
+
+
+def test_clean_round_requires_review_evidence_and_non_reserved_reviewer_ids() -> None:
+    with pytest.raises(ValidationError, match="reviewer_id 'judge' is reserved"):
+        CouncilReview(
+            reviewer_id="judge",
+            provider="gpt",
+            role="skeptic",
+            verdict=ReviewVerdict.APPROVE,
+            required_changes=[],
+            optional_suggestions=[],
+            main_risk="Reserved source collision.",
+            evidence_checked=["diff"],
+            blind_spots_or_assumptions=[],
+            confidence=70,
+        )
+
+    no_evidence_review = CouncilReview(
+        reviewer_id="skeptic",
+        provider="gpt",
+        role="skeptic",
+        verdict=ReviewVerdict.APPROVE,
+        required_changes=[],
+        optional_suggestions=[],
+        main_risk="Evidence was asserted but not recorded.",
+        evidence_checked=[],
+        blind_spots_or_assumptions=[],
+        confidence=70,
+    )
+    with pytest.raises(ValidationError, match="clean rounds require each review to record evidence_checked"):
+        ConvergenceRound(
+            round_number=1,
+            artifact_version=1,
+            reviews=[no_evidence_review],
+            judge=clean_decision(),
+        )
+
+
+def test_remaining_dissent_must_cite_participating_reviewers_once() -> None:
+    unknown_dissent = JudgeDecision(
+        verdict=ReviewVerdict.MODIFY,
+        material_required_changes=[],
+        rejected_required_changes=[],
+        optional_suggestions=[],
+        dissent_remaining=[
+            RemainingDissent(
+                reviewer_id="ghost",
+                summary="A non-participant cannot create durable dissent.",
+                material=True,
+            )
+        ],
+        evidence_gates_passed=True,
+        clean_round=False,
+        confidence=75,
+        rationale="Material dissent remains.",
+    )
+    with pytest.raises(ValidationError, match="dissent_remaining reviewer_id values unknown: ghost"):
+        ConvergenceRound(
+            round_number=1,
+            artifact_version=1,
+            reviews=[approve_review(reviewer_id="skeptic")],
+            judge=unknown_dissent,
+        )
+
+    duplicate_dissent = JudgeDecision(
+        verdict=ReviewVerdict.MODIFY,
+        material_required_changes=[],
+        rejected_required_changes=[],
+        optional_suggestions=[],
+        dissent_remaining=[
+            RemainingDissent(
+                reviewer_id="skeptic",
+                summary="First dissent summary.",
+                material=True,
+            ),
+            RemainingDissent(
+                reviewer_id="skeptic",
+                summary="Second dissent summary creates ambiguous accounting.",
+                material=True,
+            ),
+        ],
+        evidence_gates_passed=True,
+        clean_round=False,
+        confidence=75,
+        rationale="Material dissent remains.",
+    )
+    with pytest.raises(ValidationError, match="duplicate dissent_remaining reviewer_id values: skeptic"):
+        ConvergenceRound(
+            round_number=1,
+            artifact_version=1,
+            reviews=[approve_review(reviewer_id="skeptic")],
+            judge=duplicate_dissent,
+        )
