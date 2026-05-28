@@ -12,6 +12,7 @@ Console scripts (per pyproject.toml [project.scripts]):
 from __future__ import annotations
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -174,9 +175,73 @@ async def _live_smoke(adapters: dict[str, Any]) -> bool:
 
 
 # ---------- CLI entrypoints ----------
+def _load_convergence_ledger(path: Path):
+    """Load and validate a ConvergenceLedger from JSON."""
+    from pydantic import ValidationError
+
+    from orchestrator.schemas.convergence import ConvergenceLedger
+
+    try:
+        return ConvergenceLedger.model_validate_json(path.read_text(encoding="utf-8")), None
+    except (OSError, ValidationError, ValueError) as e:
+        return None, e
+
+
+def _convergence_summary(ledger: Any) -> dict[str, Any]:
+    return {
+        "valid": True,
+        "run_id": ledger.run_id,
+        "phase": ledger.phase.value,
+        "status": ledger.status.value,
+        "rounds": len(ledger.rounds),
+        "consecutive_clean_rounds": ledger.consecutive_clean_rounds,
+    }
+
+
+def _handle_converge_command(args: argparse.Namespace) -> int:
+    """Validate or replay a convergence ledger without live provider calls."""
+    ledger, error = _load_convergence_ledger(args.ledger)
+    if error is not None:
+        print(json.dumps({"valid": False, "error": str(error)}, indent=2))
+        return 1
+
+    if args.converge_command == "validate":
+        print(json.dumps(_convergence_summary(ledger), indent=2))
+        return 0
+
+    for round_ in ledger.rounds:
+        print(
+            f"round={round_.round_number} "
+            f"artifact_version={round_.artifact_version} "
+            f"verdict={round_.judge.verdict.value} "
+            f"clean={round_.judge.clean_round}"
+        )
+    print(
+        f"final status={ledger.status.value} "
+        f"consecutive_clean_rounds={ledger.consecutive_clean_rounds}"
+    )
+    return 0
+
+
+def _parse_converge_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog="council converge", description="Inspect deterministic convergence ledgers.")
+    subparsers = parser.add_subparsers(dest="converge_command", required=True)
+    for name in ("validate", "replay"):
+        command = subparsers.add_parser(name, help=f"{name.title()} a convergence ledger JSON file.")
+        command.add_argument("ledger", type=Path, help="Path to a convergence ledger JSON file.")
+    return parser.parse_args(argv)
+
+
 def main() -> None:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
-    parser = argparse.ArgumentParser(prog="council", description="H5R LLM Council v2.3")
+    if len(sys.argv) > 1 and sys.argv[1] == "converge":
+        sys.exit(_handle_converge_command(_parse_converge_args(sys.argv[2:])))
+
+    parser = argparse.ArgumentParser(
+        prog="council",
+        description="H5R LLM Council v2.3",
+        epilog="Convergence ledger tools: council converge validate <ledger.json>; council converge replay <ledger.json>",
+    )
     parser.add_argument("--status", action="store_true",
                         help="Show adapter auth status (no live calls).")
     parser.add_argument("--live", action="store_true",
