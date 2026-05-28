@@ -671,6 +671,40 @@ def test_model_copy_update_cannot_smuggle_mutable_nested_collections() -> None:
         )
 
 
+def test_model_copy_update_revalidates_top_level_invariants() -> None:
+    with pytest.raises(ValidationError, match="less than or equal to 100"):
+        clean_decision().model_copy(update={"confidence": 999})
+
+    converged = ConvergenceLedger(
+        run_id="run-copy",
+        goal="Converge before attempting unsafe copy update",
+        phase=Phase.PLAN,
+        artifact_id="plan.md",
+    )
+    converged = converged.with_round(round_with(1, clean_decision()))
+    converged = converged.with_round(round_with(2, clean_decision()))
+    converged = converged.with_round(round_with(3, clean_decision()))
+
+    with pytest.raises(ValidationError, match="ledger status must be CONVERGED, got RUNNING"):
+        converged.model_copy(update={"status": RunStatus.RUNNING})
+
+    review = review_with_required_change(reviewer_id="alice", change_id="REQ-COPY")
+    unaccounted = dirty_decision().model_copy(
+        update={
+            "material_required_changes": [
+                MaterialRequiredChange(
+                    id="REQ-OTHER",
+                    source_reviewers=["judge"],
+                    description="This does not account for Alice's change.",
+                    acceptance_criteria="Round validation must reject the copied decision.",
+                )
+            ]
+        }
+    )
+    with pytest.raises(ValidationError, match="unaccounted reviewer required_changes: REQ-COPY:alice"):
+        round_with_review(1, review, unaccounted)
+
+
 def test_duplicate_judge_accounting_records_are_rejected() -> None:
     review = review_with_required_change(reviewer_id="alice", change_id="REQ-DUP-JUDGE")
     duplicate_accepted = dirty_decision().model_copy(

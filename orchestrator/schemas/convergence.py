@@ -12,6 +12,8 @@ terminating instead of turning every nice-to-have into an infinite blocker.
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any, Self
+from collections.abc import Mapping
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -51,6 +53,11 @@ class StrictLedgerModel(BaseModel):
     """Base model for validated, immutable convergence ledger records."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
+
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
+        """Return a copied record, revalidating any update as trusted ledger state."""
+        copied = super().model_copy(update=update, deep=deep)
+        return type(self).model_validate(copied)
 
 
 class ReviewRequiredChange(StrictLedgerModel):
